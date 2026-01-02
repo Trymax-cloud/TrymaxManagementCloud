@@ -7,7 +7,11 @@ import {
   type AssignmentWithProfiles,
   type AssignmentFilters,
   type CreateAssignmentInput,
+  type Assignment,
 } from "@/types/assignment";
+
+// Re-export Assignment type for backward compatibility
+export type { Assignment } from "@/types/assignment";
 
 /* ----------------------------------
    FETCH ASSIGNMENTS (FILTERED)
@@ -360,6 +364,37 @@ export function useDeleteAssignment() {
     },
   });
 }
+
+/* ----------------------------------
+   ASSIGNMENT STATS
+----------------------------------- */
+export function useAssignmentStats() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["assignment-stats", user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+
+      const { data, error } = await supabase
+        .from("assignments")
+        .select("status, priority")
+        .eq("assignee_id", user.id);
+
+      if (error) throw error;
+
+      return {
+        total: data.length,
+        completed: data.filter((a) => a.status === "completed").length,
+        inProgress: data.filter((a) => a.status === "in_progress").length,
+        pending: data.filter((a) => a.status === "not_started").length,
+        emergency: data.filter((a) => a.priority === "emergency").length,
+      };
+    },
+    enabled: !!user,
+  });
+}
+
 /* ----------------------------------
    OVERDUE ASSIGNMENTS
 ----------------------------------- */
