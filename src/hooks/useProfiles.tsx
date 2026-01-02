@@ -18,9 +18,7 @@ export function useProfiles() {
     queryKey: ["profiles"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("name");
+        .rpc("get_verified_profiles");
 
       if (error) throw error;
       return (data || []) as Profile[];

@@ -50,12 +50,12 @@ export default function Employees() {
                 <Users className="h-8 w-8 text-muted-foreground" />
               </div>
               <h3 className="font-semibold text-lg mb-2">
-                {searchQuery ? "No matching employees" : "No employees yet"}
+                {searchQuery ? "No matching employees" : "No verified employees yet"}
               </h3>
               <p className="text-muted-foreground text-center max-w-sm">
                 {searchQuery 
                   ? "Try adjusting your search terms"
-                  : "Employees will appear here once they sign up"}
+                  : "Verified employees will appear here once they confirm their email"}
               </p>
             </CardContent>
           </Card>

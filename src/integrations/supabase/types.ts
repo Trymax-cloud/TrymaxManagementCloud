@@ -519,6 +519,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_verified_profiles: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          name: string
+          email: string
+          avatar_url: string | null
+          created_at: string
+          updated_at: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

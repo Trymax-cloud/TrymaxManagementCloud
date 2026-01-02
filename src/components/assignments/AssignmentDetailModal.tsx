@@ -44,13 +44,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useUpdateAssignment, useDeleteAssignment, type Assignment } from "@/hooks/useAssignments";
+import { useUpdateAssignment, useDeleteAssignment } from "@/hooks/useAssignments";
+import { type AssignmentWithRelations } from "@/types/assignment-relations";
 import { useUserRole } from "@/hooks/useUserRole";
 import { cn } from "@/lib/utils";
 import { TASK_CATEGORIES, type TaskCategory } from "@/lib/constants";
 
 interface AssignmentDetailModalProps {
-  assignment: Assignment | null;
+  assignment: AssignmentWithRelations | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -91,8 +92,8 @@ export function AssignmentDetailModal({
     }
   };
 
-  const creatorName = assignment.creator?.name || "Unknown";
-  const assigneeName = assignment.assignee?.name || "Unknown";
+  const creatorName = assignment.creator?.name || "Loading...";
+  const assigneeName = assignment.assignee?.name || "Loading...";
   const assigneeInitials = assigneeName
     .split(" ")
     .map((n) => n[0])

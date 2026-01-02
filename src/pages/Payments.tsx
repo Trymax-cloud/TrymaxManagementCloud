@@ -68,11 +68,14 @@ export default function Payments() {
   const handleSendReminders = async () => {
     setSendingReminders(true);
     try {
+      console.log("Invoking send-payment-reminders function...");
       const { data, error } = await supabase.functions.invoke("send-payment-reminders");
+      
+      console.log("Function response:", { data, error });
       
       if (error) {
         console.error("Error sending reminders:", error);
-        toast.error("Failed to send payment reminders");
+        toast.error(`Failed to send payment reminders: ${error.message || 'Unknown error'}`);
         return;
       }
       
@@ -87,7 +90,7 @@ export default function Payments() {
       }
     } catch (err) {
       console.error("Error invoking function:", err);
-      toast.error("Failed to send payment reminders");
+      toast.error(`Failed to send payment reminders: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setSendingReminders(false);
     }

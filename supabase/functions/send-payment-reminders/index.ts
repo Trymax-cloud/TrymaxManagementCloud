@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,248 +28,155 @@ serve(async (req: Request): Promise<Response> => {
   try {
     console.log("Starting payment reminder check...");
 
-    // Create Supabase client using external Supabase credentials
-    const supabaseUrl = Deno.env.get("EXTERNAL_SUPABASE_URL");
-    const supabaseKey = Deno.env.get("EXTERNAL_SUPABASE_ANON_KEY");
-    
-    console.log("Connecting to external Supabase:", supabaseUrl ? "URL configured" : "URL missing");
+    // Get environment variables
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
 
     if (!supabaseUrl || !supabaseKey) {
       throw new Error("Missing Supabase configuration");
     }
 
+    if (!resendApiKey) {
+      throw new Error("Missing RESEND_API_KEY");
+    }
+
+    // Create Supabase client
     const supabase = createClient(supabaseUrl, supabaseKey);
+    const resend = new Resend(resendApiKey);
 
     // Get today's date
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = today.toISOString().split("T")[0];
 
-    // Calculate reminder thresholds
+    // Calculate 3 days from now
     const threeDaysFromNow = new Date(today);
-    threeDaysFromNow.setDate(today.getDate() + 3);
-    const threeDaysStr = threeDaysFromNow.toISOString().split('T')[0];
+    threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+    const threeDaysStr = threeDaysFromNow.toISOString().split("T")[0];
 
-    // Fetch payments that are:
-    // 1. Due in 3 days (upcoming reminder)
-    // 2. Due today (due today reminder)
-    // 3. Overdue (overdue reminder)
+    console.log(`Checking payments due between ${todayStr} and ${threeDaysStr}`);
+
+    // Fetch pending/partially paid payments
     const { data: payments, error: paymentsError } = await supabase
       .from("client_payments")
       .select("*")
-      .in("status", ["pending", "partial"])
+      .in("status", ["pending", "partially_paid"])
       .lte("due_date", threeDaysStr);
 
     if (paymentsError) {
-      console.error("Error fetching payments:", paymentsError);
-      throw paymentsError;
+      throw new Error(`Failed to fetch payments: ${paymentsError.message}`);
     }
 
-    console.log(`Found ${payments?.length || 0} payments to check`);
+    console.log(`Found ${payments?.length || 0} payments to process`);
 
     if (!payments || payments.length === 0) {
       return new Response(
-        JSON.stringify({ message: "No payment reminders to send", sent: 0 }),
+        JSON.stringify({ message: "No payments require reminders", sent: 0 }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Get user profiles for email addresses
-    const userIds = [...new Set(payments.map(p => p.responsible_user_id))];
+    // Get unique user IDs
+    const userIds = [...new Set(payments.map((p) => p.responsible_user_id))];
+
+    // Fetch user profiles
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
       .select("id, email, name")
       .in("id", userIds);
 
     if (profilesError) {
-      console.error("Error fetching profiles:", profilesError);
-      throw profilesError;
+      console.error("Failed to fetch profiles:", profilesError);
     }
 
-    const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+    // Create email lookup
+    const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
-    // Categorize and send reminders
-    const reminders: { type: string; payment: PaymentReminder; email: string }[] = [];
+    // Categorize payments
+    const reminders: { payment: PaymentReminder; type: string }[] = [];
 
     for (const payment of payments) {
       const profile = profileMap.get(payment.responsible_user_id);
-      if (!profile?.email) {
-        console.log(`No email found for user ${payment.responsible_user_id}, skipping`);
-        continue;
-      }
+      const paymentWithEmail: PaymentReminder = {
+        ...payment,
+        responsible_email: profile?.email,
+        responsible_name: profile?.name,
+      };
 
       const dueDate = new Date(payment.due_date);
-      const balance = payment.invoice_amount - payment.amount_paid;
       
-      let reminderType = "";
       if (dueDate < today) {
-        reminderType = "overdue";
+        reminders.push({ payment: paymentWithEmail, type: "overdue" });
       } else if (payment.due_date === todayStr) {
-        reminderType = "due_today";
-      } else if (dueDate <= threeDaysFromNow) {
-        reminderType = "upcoming";
-      }
-
-      if (reminderType) {
-        reminders.push({
-          type: reminderType,
-          payment: {
-            ...payment,
-            responsible_email: profile.email,
-            responsible_name: profile.name,
-          },
-          email: profile.email,
-        });
+        reminders.push({ payment: paymentWithEmail, type: "due_today" });
+      } else {
+        reminders.push({ payment: paymentWithEmail, type: "upcoming" });
       }
     }
 
     console.log(`Sending ${reminders.length} reminder emails`);
 
     // Send emails
-    const sentEmails: string[] = [];
-    const errors: string[] = [];
+    let successCount = 0;
+    let failCount = 0;
 
-    for (const reminder of reminders) {
-      const { type, payment, email } = reminder;
-      const balance = payment.invoice_amount - payment.amount_paid;
-      
-      let subject = "";
-      let urgencyClass = "";
-      let message = "";
-
-      switch (type) {
-        case "overdue":
-          subject = `🚨 OVERDUE: Payment for ${payment.client_name}`;
-          urgencyClass = "overdue";
-          message = `This payment is <strong>overdue</strong>. Please follow up immediately.`;
-          break;
-        case "due_today":
-          subject = `⚠️ DUE TODAY: Payment for ${payment.client_name}`;
-          urgencyClass = "due-today";
-          message = `This payment is <strong>due today</strong>. Please ensure it's collected.`;
-          break;
-        case "upcoming":
-          subject = `📅 Upcoming: Payment for ${payment.client_name}`;
-          urgencyClass = "upcoming";
-          message = `This payment is due soon. Please prepare for collection.`;
-          break;
+    for (const { payment, type } of reminders) {
+      if (!payment.responsible_email) {
+        console.log(`Skipping payment ${payment.id} - no email found`);
+        continue;
       }
 
+      const subject = type === "overdue"
+        ? `⚠️ OVERDUE: Payment from ${payment.client_name}`
+        : type === "due_today"
+        ? `📅 DUE TODAY: Payment from ${payment.client_name}`
+        : `🔔 UPCOMING: Payment from ${payment.client_name} due soon`;
+
       const html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: #1a365d; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
-            .content { background: #f7fafc; padding: 20px; border: 1px solid #e2e8f0; }
-            .footer { background: #edf2f7; padding: 15px; border-radius: 0 0 8px 8px; font-size: 12px; color: #718096; }
-            .amount { font-size: 24px; font-weight: bold; color: #2d3748; }
-            .overdue { color: #e53e3e; }
-            .due-today { color: #dd6b20; }
-            .upcoming { color: #3182ce; }
-            .details { background: white; padding: 15px; border-radius: 8px; margin: 15px 0; }
-            .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
-            .detail-row:last-child { border-bottom: none; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1 style="margin: 0;">Payment Reminder</h1>
-            </div>
-            <div class="content">
-              <p>Hello ${payment.responsible_name || 'Team'},</p>
-              <p class="${urgencyClass}">${message}</p>
-              
-              <div class="details">
-                <div class="detail-row">
-                  <span>Client:</span>
-                  <strong>${payment.client_name}</strong>
-                </div>
-                <div class="detail-row">
-                  <span>Invoice Amount:</span>
-                  <span>₹${payment.invoice_amount.toLocaleString()}</span>
-                </div>
-                <div class="detail-row">
-                  <span>Amount Paid:</span>
-                  <span>₹${payment.amount_paid.toLocaleString()}</span>
-                </div>
-                <div class="detail-row">
-                  <span>Balance Due:</span>
-                  <strong class="amount ${urgencyClass}">₹${balance.toLocaleString()}</strong>
-                </div>
-                <div class="detail-row">
-                  <span>Due Date:</span>
-                  <strong>${new Date(payment.due_date).toLocaleDateString('en-IN', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  })}</strong>
-                </div>
-              </div>
-              
-              <p>Please take appropriate action to ensure timely collection.</p>
-            </div>
-            <div class="footer">
-              <p>This is an automated reminder from EWPM System.</p>
-            </div>
-          </div>
-        </body>
-        </html>
+        <h2>Payment Reminder</h2>
+        <p>Hello ${payment.responsible_name || "Team"},</p>
+        <p><strong>Client:</strong> ${payment.client_name}</p>
+        <p><strong>Amount:</strong> $${payment.invoice_amount.toLocaleString()}</p>
+        <p><strong>Due Date:</strong> ${payment.due_date}</p>
+        <p><strong>Status:</strong> ${payment.status}</p>
+        <p>Please take appropriate action.</p>
       `;
 
       try {
-        // Send email using Resend API directly via fetch
-        const emailResponse = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${RESEND_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: "EWPM System <onboarding@resend.dev>",
-            to: [email],
-            subject,
-            html,
-          }),
+        await resend.emails.send({
+          from: "EWPM System <noreply@yourdomain.com>",
+          to: [payment.responsible_email],
+          subject,
+          html,
         });
-        
-        const emailResult = await emailResponse.json();
-        
-        if (!emailResponse.ok) {
-          throw new Error(emailResult.message || "Failed to send email");
-        }
-        
-        console.log(`Email sent to ${email}:`, emailResult);
-        sentEmails.push(email);
-      } catch (emailError: any) {
-        console.error(`Failed to send email to ${email}:`, emailError);
-        errors.push(`${email}: ${emailError.message}`);
+        successCount++;
+        console.log(`Sent reminder for payment ${payment.id}`);
+      } catch (emailError) {
+        failCount++;
+        console.error(`Failed to send email for payment ${payment.id}:`, emailError);
       }
     }
 
     return new Response(
       JSON.stringify({
-        message: `Sent ${sentEmails.length} payment reminder emails`,
-        sent: sentEmails.length,
-        emails: sentEmails,
-        errors: errors.length > 0 ? errors : undefined,
+        message: "Payment reminders processed",
+        sent: successCount,
+        failed: failCount,
+        total: reminders.length,
       }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (error: any) {
+
+  } catch (error) {
     console.error("Error in send-payment-reminders:", error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      JSON.stringify({ 
+        error: errorMessage,
+        details: error instanceof Error ? error.stack : String(error)
+      }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

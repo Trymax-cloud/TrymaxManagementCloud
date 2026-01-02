@@ -6,10 +6,10 @@ import { StatusBadge, PriorityBadge } from "@/components/ui/status-badge";
 import { CategoryBadge } from "@/components/ui/category-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import type { Assignment } from "@/hooks/useAssignments";
+import { type AssignmentWithRelations } from "@/types/assignment-relations";
 
 interface AssignmentCardProps {
-  assignment: Assignment;
+  assignment: AssignmentWithRelations;
   onClick?: () => void;
   showAssignee?: boolean;
 }
@@ -33,11 +33,11 @@ export const AssignmentCard = memo(function AssignmentCard({
   }, [dueDate, isOverdue, isDueToday, isDueTomorrow]);
 
   const assigneeInitials = useMemo(() => {
-    const name = assignment.assignee?.name || "Unknown";
+    const name = assignment.assignee?.name || "Loading...";
     return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
   }, [assignment.assignee?.name]);
 
-  const assigneeName = assignment.assignee?.name || "Unknown";
+  const assigneeName = assignment.assignee?.name || "Loading...";
 
   return (
     <Card

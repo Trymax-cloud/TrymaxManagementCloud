@@ -3,62 +3,55 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useToast } from "./use-toast";
 import { type TaskCategory, DEFAULT_CATEGORY } from "@/lib/constants";
+import { 
+  type AssignmentWithProfiles, 
+  type Assignment, 
+  type AssignmentFilters, 
+  type CreateAssignmentInput,
+  type Profile,
+  type Project
+} from "@/types/assignment";
 
-export interface Assignment {
-  id: string;
-  title: string;
-  description: string | null;
-  creator_id: string;
-  assignee_id: string;
-  project_id: string | null;
-  created_date: string;
-  due_date: string | null;
-  completion_date: string | null;
-  status: "not_started" | "in_progress" | "completed" | "on_hold";
-  priority: "normal" | "high" | "emergency";
-  category: TaskCategory;
-  remark: string | null;
-  created_at: string;
-  updated_at: string;
-  // Time tracking fields
-  start_time: string | null;
-  end_time: string | null;
-  total_duration_minutes: number | null;
-  // Joined data (optional)
-  creator?: { name: string; email: string } | null;
-  assignee?: { name: string; email: string } | null;
-  project?: { name: string; client_name: string } | null;
-}
-
-export interface AssignmentFilters {
-  status?: string;
-  priority?: string;
-  projectId?: string;
-  assigneeId?: string;
-  category?: string;
-  search?: string;
-}
-
-export interface CreateAssignmentInput {
-  title: string;
-  description?: string;
-  assignee_ids: string[]; // Changed to support multiple assignees
-  project_id?: string;
-  due_date?: string;
-  priority: "normal" | "high" | "emergency";
-  category?: TaskCategory;
-  remark?: string;
-}
-
-export function useAssignments(filters: AssignmentFilters = {}) {
+export function useAssignments(filters: AssignmentFilters = {}): ReturnType<typeof useQuery<AssignmentWithProfiles[]>> {
   const { user } = useAuth();
 
   return useQuery({
     queryKey: ["assignments", filters],
-    queryFn: async () => {
+    queryFn: async (): Promise<AssignmentWithProfiles[]> => {
       let query = supabase
         .from("assignments")
-        .select("*")
+        .select(`
+          *,
+          creator:profiles!assignments_creator_id_fkey (
+            id,
+            name,
+            email,
+            avatar_url,
+            created_at,
+            updated_at
+          ),
+          assignee:profiles!assignments_assignee_id_fkey (
+            id,
+            name,
+            email,
+            avatar_url,
+            created_at,
+            updated_at
+          ),
+          project:projects (
+            id,
+            name,
+            client_name,
+            created_at,
+            created_by,
+            description,
+            end_date,
+            start_date,
+            stage,
+            status,
+            updated_at
+          )
+        `)
         .order("created_date", { ascending: false });
 
       if (filters.status && filters.status !== "all") {
@@ -82,42 +75,104 @@ export function useAssignments(filters: AssignmentFilters = {}) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data || []) as Assignment[];
+      return data as AssignmentWithProfiles[];
     },
     enabled: !!user,
   });
 }
 
 // Hook to fetch ALL assignments (for directors)
-export function useAllAssignments() {
+export function useAllAssignments(): ReturnType<typeof useQuery<AssignmentWithProfiles[]>> {
   const { user } = useAuth();
 
   return useQuery({
     queryKey: ["all-assignments"],
-    queryFn: async () => {
+    queryFn: async (): Promise<AssignmentWithProfiles[]> => {
       const { data, error } = await supabase
         .from("assignments")
-        .select("*")
+        .select(`
+          *,
+          creator:profiles!assignments_creator_id_fkey (
+            id,
+            name,
+            email,
+            avatar_url,
+            created_at,
+            updated_at
+          ),
+          assignee:profiles!assignments_assignee_id_fkey (
+            id,
+            name,
+            email,
+            avatar_url,
+            created_at,
+            updated_at
+          ),
+          project:projects (
+            id,
+            name,
+            client_name,
+            created_at,
+            created_by,
+            description,
+            end_date,
+            start_date,
+            stage,
+            status,
+            updated_at
+          )
+        `)
         .order("created_date", { ascending: false });
 
       if (error) throw error;
-      return (data || []) as Assignment[];
+      return data as AssignmentWithProfiles[];
     },
     enabled: !!user,
   });
 }
 
-export function useMyAssignments(filters: AssignmentFilters = {}) {
+export function useMyAssignments(filters: AssignmentFilters = {}): ReturnType<typeof useQuery<AssignmentWithProfiles[]>> {
   const { user } = useAuth();
 
   return useQuery({
     queryKey: ["my-assignments", user?.id, filters],
-    queryFn: async () => {
+    queryFn: async (): Promise<AssignmentWithProfiles[]> => {
       if (!user) return [];
 
       let query = supabase
         .from("assignments")
-        .select("*")
+        .select(`
+          *,
+          creator:profiles!assignments_creator_id_fkey (
+            id,
+            name,
+            email,
+            avatar_url,
+            created_at,
+            updated_at
+          ),
+          assignee:profiles!assignments_assignee_id_fkey (
+            id,
+            name,
+            email,
+            avatar_url,
+            created_at,
+            updated_at
+          ),
+          project:projects (
+            id,
+            name,
+            client_name,
+            created_at,
+            created_by,
+            description,
+            end_date,
+            start_date,
+            stage,
+            status,
+            updated_at
+          )
+        `)
         .eq("assignee_id", user.id)
         .order("due_date", { ascending: true, nullsFirst: false });
 
@@ -130,24 +185,55 @@ export function useMyAssignments(filters: AssignmentFilters = {}) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data || []) as Assignment[];
+      return data as AssignmentWithProfiles[];
     },
     enabled: !!user,
   });
 }
 
-export function useAssignment(id: string) {
+export function useAssignment(id: string): ReturnType<typeof useQuery<AssignmentWithProfiles>> {
   return useQuery({
     queryKey: ["assignment", id],
-    queryFn: async () => {
+    queryFn: async (): Promise<AssignmentWithProfiles> => {
       const { data, error } = await supabase
         .from("assignments")
-        .select("*")
+        .select(`
+          *,
+          creator:profiles!assignments_creator_id_fkey (
+            id,
+            name,
+            email,
+            avatar_url,
+            created_at,
+            updated_at
+          ),
+          assignee:profiles!assignments_assignee_id_fkey (
+            id,
+            name,
+            email,
+            avatar_url,
+            created_at,
+            updated_at
+          ),
+          project:projects (
+            id,
+            name,
+            client_name,
+            created_at,
+            created_by,
+            description,
+            end_date,
+            start_date,
+            stage,
+            status,
+            updated_at
+          )
+        `)
         .eq("id", id)
         .single();
 
       if (error) throw error;
-      return data as Assignment;
+      return data as AssignmentWithProfiles;
     },
     enabled: !!id,
   });
@@ -283,24 +369,55 @@ export function useAssignmentStats() {
   });
 }
 
-export function useOverdueAssignments() {
+export function useOverdueAssignments(): ReturnType<typeof useQuery<AssignmentWithProfiles[]>> {
   const { user } = useAuth();
 
   return useQuery({
     queryKey: ["overdue-assignments", user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<AssignmentWithProfiles[]> => {
       if (!user) return [];
 
       const { data, error } = await supabase
         .from("assignments")
-        .select("*")
+        .select(`
+          *,
+          creator:profiles!assignments_creator_id_fkey (
+            id,
+            name,
+            email,
+            avatar_url,
+            created_at,
+            updated_at
+          ),
+          assignee:profiles!assignments_assignee_id_fkey (
+            id,
+            name,
+            email,
+            avatar_url,
+            created_at,
+            updated_at
+          ),
+          project:projects (
+            id,
+            name,
+            client_name,
+            created_at,
+            created_by,
+            description,
+            end_date,
+            start_date,
+            stage,
+            status,
+            updated_at
+          )
+        `)
         .eq("assignee_id", user.id)
         .neq("status", "completed")
         .lt("due_date", new Date().toISOString())
         .order("due_date", { ascending: true });
 
       if (error) throw error;
-      return (data || []) as Assignment[];
+      return data as AssignmentWithProfiles[];
     },
     enabled: !!user,
   });
