@@ -360,3 +360,62 @@ export function useDeleteAssignment() {
     },
   });
 }
+/* ----------------------------------
+   OVERDUE ASSIGNMENTS
+----------------------------------- */
+export function useOverdueAssignments() {
+  const { user } = useAuth();
+
+  return useQuery<AssignmentWithProfiles[]>({
+    queryKey: ["overdue-assignments", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from("assignments")
+        .select(
+          `
+          *,
+          creator:profiles!assignments_creator_id_fkey (
+            id,
+            name,
+            email,
+            avatar_url,
+            created_at,
+            updated_at
+          ),
+          assignee:profiles!assignments_assignee_id_fkey (
+            id,
+            name,
+            email,
+            avatar_url,
+            created_at,
+            updated_at
+          ),
+          project:projects (
+            id,
+            name,
+            client_name,
+            created_at,
+            created_by,
+            description,
+            start_date,
+            end_date,
+            stage,
+            status,
+            updated_at
+          )
+        `
+        )
+        .eq("assignee_id", user.id)
+        .neq("status", "completed")
+        .lt("due_date", new Date().toISOString())
+        .order("due_date", { ascending: true })
+        .returns<AssignmentWithProfiles[]>();
+
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
