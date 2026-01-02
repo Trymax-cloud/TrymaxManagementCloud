@@ -80,10 +80,10 @@ export function useAssignments(filters: AssignmentFilters = {}) {
         query = query.ilike("title", `%${filters.search}%`);
       }
 
-      const { data, error } = await query.returns<AssignmentWithProfiles[]>();
+      const { data, error } = await query;
       if (error) throw error;
 
-      return data ?? [];
+      return (data ?? []) as AssignmentWithProfiles[];
     },
   });
 }

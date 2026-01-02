@@ -13,6 +13,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { StatusBadge, PriorityBadge } from "@/components/ui/status-badge";
 import { CategoryBadge } from "@/components/ui/category-badge";
 import { useAssignments, useMyAssignments, type Assignment, type AssignmentFilters } from "@/hooks/useAssignments";
+import { useSimpleAssignments, useSimpleMyAssignments } from "@/hooks/useSimpleAssignments";
 import { useActiveProjects } from "@/hooks/useProjects";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAutoArchive, useManualArchive } from "@/hooks/useAutoArchive";
@@ -43,8 +44,8 @@ export default function Assignments() {
   const debouncedSearch = useDebouncedValue(search, 300);
   
   // Use all assignments for directors, my assignments for employees
-  const { data: allAssignments, isLoading: allLoading } = useAssignments({ ...filters, search: debouncedSearch });
-  const { data: myAssignments, isLoading: myLoading } = useMyAssignments({ ...filters });
+  const { data: allAssignments, isLoading: allLoading } = useSimpleAssignments({ ...filters, search: debouncedSearch });
+  const { data: myAssignments, isLoading: myLoading } = useSimpleMyAssignments({ ...filters });
 
   const assignments = isDirector ? allAssignments : myAssignments;
   const isLoading = isDirector ? allLoading : myLoading;
@@ -55,9 +56,9 @@ export default function Assignments() {
 
   // Memoized filtering
   const searchFiltered = useMemo(() => 
-    assignments?.filter(a => 
+    (assignments || []).filter(a => 
       !debouncedSearch || a.title.toLowerCase().includes(debouncedSearch.toLowerCase())
-    ) || [],
+    ),
     [assignments, debouncedSearch]
   );
 
