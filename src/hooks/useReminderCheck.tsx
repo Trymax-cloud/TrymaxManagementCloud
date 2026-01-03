@@ -5,6 +5,7 @@ import { useMyAssignmentsWithProfiles } from "@/hooks/useAssignmentsWithProfiles
 import { useMyPayments } from "@/hooks/usePayments";
 import { toast } from "@/hooks/use-toast";
 import { differenceInDays, isToday, isTomorrow, parseISO } from "date-fns";
+import { JSONStorage } from "@/utils/storage";
 
 const REMINDER_CHECK_INTERVAL = 60000; // Check every minute
 const SHOWN_REMINDERS_KEY = "shown_reminders";
@@ -14,12 +15,8 @@ interface ShownReminders {
 }
 
 function getShownReminders(): ShownReminders {
-  try {
-    const stored = localStorage.getItem(SHOWN_REMINDERS_KEY);
-    return stored ? JSON.parse(stored) : {};
-  } catch {
-    return {};
-  }
+  const stored = JSONStorage.getItem<ShownReminders>(SHOWN_REMINDERS_KEY);
+  return stored || {};
 }
 
 function markReminderShown(id: string) {
@@ -30,7 +27,7 @@ function markReminderShown(id: string) {
   const cleaned = Object.fromEntries(
     Object.entries(reminders).filter(([, timestamp]) => timestamp > oneDayAgo)
   );
-  localStorage.setItem(SHOWN_REMINDERS_KEY, JSON.stringify(cleaned));
+  JSONStorage.setItem(SHOWN_REMINDERS_KEY, cleaned);
 }
 
 function wasReminderShownRecently(id: string): boolean {

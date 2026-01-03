@@ -3,6 +3,7 @@ import { Download, X, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { SafeStorage } from "@/utils/storage";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -27,7 +28,7 @@ export function InstallPrompt() {
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       
       // Show prompt after a delay and only if not dismissed before
-      const dismissed = localStorage.getItem("pwa-prompt-dismissed");
+      const dismissed = SafeStorage.getItem("pwa-prompt-dismissed");
       if (!dismissed) {
         setTimeout(() => setShowPrompt(true), 30000); // Show after 30 seconds
       }
@@ -60,7 +61,7 @@ export function InstallPrompt() {
 
   const handleDismiss = () => {
     setShowPrompt(false);
-    localStorage.setItem("pwa-prompt-dismissed", "true");
+    SafeStorage.setItem("pwa-prompt-dismissed", "true");
   };
 
   // Don't show if not installable or already installed

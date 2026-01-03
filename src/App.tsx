@@ -11,6 +11,7 @@ import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { RealtimeProvider } from "@/components/providers/RealtimeProvider";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { SettingsProvider } from "@/contexts/SettingsContext";
+import { useElectronValidation } from "@/utils/validation";
 
 // Lazy load pages for better performance
 const Auth = lazy(() => import("./pages/Auth"));
@@ -47,8 +48,11 @@ const queryClient = new QueryClient({
   },
 });
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+const App = () => {
+  // Enable Electron validation in development
+  useElectronValidation();
+
+  return (
     <SettingsProvider>
       <TooltipProvider>
         <Toaster />
@@ -58,35 +62,37 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <RealtimeProvider>
-              <Suspense fallback={<PageLoader />}>
-                <Routes>
-                  <Route path="/" element={<Auth />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/unauthorized" element={<Unauthorized />} />
-                  
-                  {/* Protected Routes */}
-                  <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                  <Route path="/assignments" element={<ProtectedRoute><Assignments /></ProtectedRoute>} />
-                  <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
-                  <Route path="/employees" element={<ProtectedRoute allowedRoles={["director"]}><Employees /></ProtectedRoute>} />
-                  <Route path="/ratings" element={<ProtectedRoute><Ratings /></ProtectedRoute>} />
-                  <Route path="/payments" element={<ProtectedRoute allowedRoles={["director"]}><Payments /></ProtectedRoute>} />
-                  <Route path="/reports" element={<ProtectedRoute allowedRoles={["director"]}><Reports /></ProtectedRoute>} />
-                  <Route path="/daily-summary" element={<ProtectedRoute><DailySummary /></ProtectedRoute>} />
-                  <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-                  <Route path="/meetings" element={<ProtectedRoute><Meetings /></ProtectedRoute>} />
-                  <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-                  <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-                  
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </Suspense>
+              <QueryClientProvider client={queryClient}>
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    <Route path="/" element={<Auth />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/unauthorized" element={<Unauthorized />} />
+                    
+                    {/* Protected Routes */}
+                    <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                    <Route path="/assignments" element={<ProtectedRoute><Assignments /></ProtectedRoute>} />
+                    <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
+                    <Route path="/employees" element={<ProtectedRoute allowedRoles={["director"]}><Employees /></ProtectedRoute>} />
+                    <Route path="/ratings" element={<ProtectedRoute><Ratings /></ProtectedRoute>} />
+                    <Route path="/payments" element={<ProtectedRoute allowedRoles={["director"]}><Payments /></ProtectedRoute>} />
+                    <Route path="/reports" element={<ProtectedRoute allowedRoles={["director"]}><Reports /></ProtectedRoute>} />
+                    <Route path="/daily-summary" element={<ProtectedRoute><DailySummary /></ProtectedRoute>} />
+                    <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+                    <Route path="/meetings" element={<ProtectedRoute><Meetings /></ProtectedRoute>} />
+                    <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+                    <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                    
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
+              </QueryClientProvider>
             </RealtimeProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
     </SettingsProvider>
-  </QueryClientProvider>
-);
+  );
+};
 
 export default App;

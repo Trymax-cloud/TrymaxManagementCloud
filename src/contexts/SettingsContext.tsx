@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import { JSONStorage, SafeStorage } from "@/utils/storage";
 
 // ============= Types =============
 
@@ -117,56 +118,39 @@ interface SettingsProviderProps {
 
 export function SettingsProvider({ children }: SettingsProviderProps) {
   const [settings, setSettings] = useState<UserSettings>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        // Merge with defaults to handle new settings added over time
-        return {
-          ...defaultSettings,
-          ...parsed,
-          notifications: { ...defaultSettings.notifications, ...parsed.notifications },
-          reminderTiming: { ...defaultSettings.reminderTiming, ...parsed.reminderTiming },
-          appearance: { ...defaultSettings.appearance, ...parsed.appearance },
-          autoArchive: { ...defaultSettings.autoArchive, ...parsed.autoArchive },
-          system: { ...defaultSettings.system, ...parsed.system },
-        };
-      }
-    } catch (error) {
-      console.error('Failed to load settings from localStorage:', error);
-    }
-    return defaultSettings;
-  });
+  const stored = JSONStorage.getItem<UserSettings>(STORAGE_KEY);
+  if (stored) {
+    // Merge with defaults to handle new settings added over time
+    return {
+      ...defaultSettings,
+      ...stored,
+      notifications: { ...defaultSettings.notifications, ...stored.notifications },
+      reminderTiming: { ...defaultSettings.reminderTiming, ...stored.reminderTiming },
+      appearance: { ...defaultSettings.appearance, ...stored.appearance },
+      autoArchive: { ...defaultSettings.autoArchive, ...stored.autoArchive },
+      system: { ...defaultSettings.system, ...stored.system },
+    };
+  }
+  return defaultSettings;
+});
 
-  const [archivedTaskIds, setArchivedTaskIds] = useState<Set<string>>(() => {
-    try {
-      const stored = localStorage.getItem(ARCHIVED_TASKS_KEY);
-      if (stored) {
-        return new Set(JSON.parse(stored));
-      }
-    } catch (error) {
-      console.error('Failed to load archived tasks from localStorage:', error);
-    }
-    return new Set();
-  });
+const [archivedTaskIds, setArchivedTaskIds] = useState<Set<string>>(() => {
+  const stored = JSONStorage.getItem<string[]>(ARCHIVED_TASKS_KEY);
+  if (stored) {
+    return new Set(stored);
+  }
+  return new Set();
+});
 
-  // Persist settings to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    } catch (error) {
-      console.error('Failed to save settings to localStorage:', error);
-    }
-  }, [settings]);
+// Persist settings to storage
+useEffect(() => {
+  JSONStorage.setItem(STORAGE_KEY, settings);
+}, [settings]);
 
-  // Persist archived tasks to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem(ARCHIVED_TASKS_KEY, JSON.stringify([...archivedTaskIds]));
-    } catch (error) {
-      console.error('Failed to save archived tasks to localStorage:', error);
-    }
-  }, [archivedTaskIds]);
+// Persist archived tasks to storage
+useEffect(() => {
+  JSONStorage.setItem(ARCHIVED_TASKS_KEY, [...archivedTaskIds]);
+}, [archivedTaskIds]);
 
   // Apply dark mode to document
   useEffect(() => {
@@ -279,8 +263,8 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
   const resetSettings = useCallback(() => {
     setSettings(defaultSettings);
     setArchivedTaskIds(new Set());
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(ARCHIVED_TASKS_KEY);
+    SafeStorage.removeItem(STORAGE_KEY);
+    SafeStorage.removeItem(ARCHIVED_TASKS_KEY);
   }, []);
 
   const shouldShowNotification = useCallback((type: keyof NotificationPreferences) => {

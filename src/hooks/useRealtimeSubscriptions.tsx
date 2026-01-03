@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+import { notifyDesktop } from "@/utils/notifications";
 
 type RealtimePayload<T> = {
   eventType: "INSERT" | "UPDATE" | "DELETE";
@@ -54,12 +55,44 @@ export function useRealtimeAssignments() {
           }
 
           if (payload.eventType === "UPDATE") {
-            const updated = payload.new as { assignee_id: string; status: string; title: string };
+            const updated = payload.new as { 
+              assignee_id: string; 
+              status: string; 
+              title: string; 
+              due_date: string;
+              priority: string;
+            };
+            
+            // Task completed notification
             if (updated.assignee_id === user.id && updated.status === "completed") {
               toast({
                 title: "Assignment Completed",
                 description: `"${updated.title}" marked as completed`,
               });
+              
+              // Desktop notification for task completion
+              notifyDesktop({
+                title: "Task Completed! 🎉",
+                message: `"${updated.title}" has been marked as completed`,
+                tag: `task-completed-${payload.new.id}`,
+                requireInteraction: false,
+              });
+            }
+            
+            // Task overdue notification
+            if (updated.assignee_id === user.id && updated.status !== "completed" && updated.due_date) {
+              const dueDate = new Date(updated.due_date);
+              const now = new Date();
+              
+              if (dueDate < now) {
+                const priority = updated.priority === "emergency" ? "🚨 URGENT" : "⚠️ Overdue";
+                notifyDesktop({
+                  title: priority,
+                  message: `"${updated.title}" is overdue!`,
+                  tag: `task-overdue-${payload.new.id}`,
+                  requireInteraction: updated.priority === "emergency",
+                });
+              }
             }
           }
         }
