@@ -121,12 +121,6 @@ export default function Reports() {
     }).format(amount);
   };
 
-  const formatDuration = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-  };
-
   // Prepare chart data
   const stageChartData = projectData ? Object.entries(projectData.by_stage).map(([key, value]) => ({
     name: STAGE_LABELS[key] || key,
@@ -362,7 +356,6 @@ export default function Reports() {
                         <TableHead className="text-right">Assigned</TableHead>
                         <TableHead className="text-right">Completed</TableHead>
                         <TableHead className="text-right">In Progress</TableHead>
-                        <TableHead className="text-right">Time Spent</TableHead>
                         <TableHead className="text-right">Present</TableHead>
                         <TableHead className="text-right">Absent</TableHead>
                       </TableRow>
@@ -374,14 +367,13 @@ export default function Reports() {
                           <TableCell className="text-right">{emp.tasks_assigned}</TableCell>
                           <TableCell className="text-right text-green-600">{emp.tasks_completed}</TableCell>
                           <TableCell className="text-right text-blue-600">{emp.tasks_in_progress}</TableCell>
-                          <TableCell className="text-right">{formatDuration(emp.total_time_minutes)}</TableCell>
                           <TableCell className="text-right text-green-600">{emp.attendance_present}</TableCell>
                           <TableCell className="text-right text-red-600">{emp.attendance_absent}</TableCell>
                         </TableRow>
                       ))}
                       {(!employeeData || employeeData.length === 0) && (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center text-muted-foreground">
+                          <TableCell colSpan={6} className="text-center text-muted-foreground">
                             No employees found
                           </TableCell>
                         </TableRow>

@@ -63,13 +63,6 @@ export default function DailySummary() {
     return completionDate >= dateStart && completionDate <= dateEnd;
   }) || [];
 
-  // Assignments WORKED ON today (based on start_time)
-  const workedOnToday = assignments?.filter(a => {
-    if (!a.start_time) return false;
-    const startTime = new Date(a.start_time);
-    return startTime >= dateStart && startTime <= dateEnd;
-  }) || [];
-
   // Stats for the day
   const stats = {
     dueToday: todayAssignments.length,
@@ -77,8 +70,8 @@ export default function DailySummary() {
     inProgress: todayAssignments.filter(a => a.status === "in_progress").length,
     pending: todayAssignments.filter(a => a.status === "not_started").length,
     emergency: todayAssignments.filter(a => a.priority === "emergency").length,
-    workedOn: workedOnToday.length,
-    totalTimeMinutes: workedOnToday.reduce((sum, a) => sum + (a.total_duration_minutes || 0), 0),
+    workedOn: 0, // Removed time tracking
+    totalTimeMinutes: 0, // Removed time tracking
   };
 
   const navigateDate = (direction: "prev" | "next") => {
@@ -584,12 +577,12 @@ export default function DailySummary() {
                           <CheckCircle2 className="h-4 w-4 text-success" />
                           {assignment.title}
                         </p>
-                        {assignment.total_duration_minutes && assignment.total_duration_minutes > 0 && (
-                          <p className="text-sm text-muted-foreground flex items-center gap-1">
-                            <Timer className="h-3 w-3" />
-                            {formatDuration(assignment.total_duration_minutes)}
-                          </p>
-                        )}
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <CategoryBadge category={assignment.category} />
+                          {assignment.due_date && (
+                            <span>Due: {format(new Date(assignment.due_date), "MMM d")}</span>
+                          )}
+                        </div>
                       </div>
                       <PriorityBadge priority={assignment.priority as AssignmentPriority} />
                     </div>
@@ -624,8 +617,8 @@ export default function DailySummary() {
                   <span className="font-medium ml-2 text-info">{stats.inProgress}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Time Tracked:</span>
-                  <span className="font-medium ml-2">{formatDuration(stats.totalTimeMinutes)}</span>
+                  <span className="text-muted-foreground">Pending:</span>
+                  <span className="font-medium ml-2 text-warning">{stats.pending}</span>
                 </div>
               </div>
               <Separator />
