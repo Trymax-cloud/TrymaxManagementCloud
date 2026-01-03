@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format, isPast, isToday } from "date-fns";
-import { Calendar, User, IndianRupee, AlertCircle, Check } from "lucide-react";
+import { Calendar, User, IndianRupee, AlertCircle, Check, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { ClientPayment, useUpdatePayment } from "@/hooks/usePayments";
 
@@ -16,9 +17,20 @@ interface PaymentCardProps {
   responsibleName?: string;
   projectName?: string;
   canEdit?: boolean;
+  isSelected?: boolean;
+  onSelect?: (paymentId: string, checked: boolean) => void;
+  onDelete?: (payment: { id: string; client_name: string; invoice_amount: number }) => void;
 }
 
-export function PaymentCard({ payment, responsibleName, projectName, canEdit = false }: PaymentCardProps) {
+export function PaymentCard({ 
+  payment, 
+  responsibleName, 
+  projectName, 
+  canEdit = false, 
+  isSelected = false, 
+  onSelect, 
+  onDelete 
+}: PaymentCardProps) {
   const updatePayment = useUpdatePayment();
   const [showPartialInput, setShowPartialInput] = useState(false);
   const [partialAmount, setPartialAmount] = useState(payment.amount_paid.toString());
@@ -95,15 +107,36 @@ export function PaymentCard({ payment, responsibleName, projectName, canEdit = f
     )}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
-          <div>
-            <h3 className="font-semibold">{payment.client_name}</h3>
-            {projectName && (
-              <p className="text-sm text-muted-foreground">{projectName}</p>
+          <div className="flex items-start gap-3 flex-1">
+            {onSelect && (
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={(checked) => onSelect(payment.id, checked as boolean)}
+                className="mt-1"
+              />
+            )}
+            <div className="flex-1">
+              <h3 className="font-semibold">{payment.client_name}</h3>
+              {projectName && (
+                <p className="text-sm text-muted-foreground">{projectName}</p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge className={getStatusColor()}>
+              {payment.status.replace("_", " ")}
+            </Badge>
+            {onDelete && canEdit && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onDelete(payment)}
+                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             )}
           </div>
-          <Badge className={getStatusColor()}>
-            {payment.status.replace("_", " ")}
-          </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

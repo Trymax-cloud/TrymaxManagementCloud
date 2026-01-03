@@ -17,6 +17,13 @@ interface PaymentReminder {
   responsible_user_id: string;
   responsible_email?: string;
   responsible_name?: string;
+  last_72h_reminder_sent?: string;
+  last_24h_reminder_sent?: string;
+  last_overdue_reminder_sent?: string;
+}
+
+interface ReminderRequest {
+  payment_ids?: string[]; // Optional: specific payment IDs to process
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -27,6 +34,14 @@ serve(async (req: Request): Promise<Response> => {
 
   try {
     console.log("Starting payment reminder check...");
+
+    // Parse request body for optional payment IDs
+    let paymentIds: string[] = [];
+    if (req.method === "POST") {
+      const body: ReminderRequest = await req.json().catch(() => ({}));
+      paymentIds = body.payment_ids || [];
+      console.log(`Processing ${paymentIds.length} specific payment IDs`);
+    }
 
     // Get environment variables with explicit error checking
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -56,29 +71,54 @@ serve(async (req: Request): Promise<Response> => {
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
 
-    // Calculate 3 days from now
-    const threeDaysFromNow = new Date(today);
-    threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
-    const threeDaysStr = threeDaysFromNow.toISOString().split("T")[0];
+    // Calculate time windows
+    const twentyFourHoursFromNow = new Date(today);
+    twentyFourHoursFromNow.setDate(twentyFourHoursFromNow.getDate() + 1);
+    const twentyFourStr = twentyFourHoursFromNow.toISOString().split("T")[0];
 
-    console.log(`Checking payments due between ${todayStr} and ${threeDaysStr}`);
+    const seventyTwoHoursFromNow = new Date(today);
+    seventyTwoHoursFromNow.setDate(seventyTwoHoursFromNow.getDate() + 3);
+    const seventyTwoStr = seventyTwoHoursFromNow.toISOString().split("T")[0];
 
-    // Fetch pending/partially paid payments
-    const { data: payments, error: paymentsError } = await supabase
-      .from("client_payments")
-      .select("*")
-      .in("status", ["pending", "partially_paid"])
-      .lte("due_date", threeDaysStr);
+    console.log(`Checking payments with due dates up to ${seventyTwoStr}`);
 
-    if (paymentsError) {
-      throw new Error(`Failed to fetch payments: ${paymentsError.message}`);
+    let payments: PaymentReminder[] = [];
+
+    if (paymentIds.length > 0) {
+      // Process specific payment IDs
+      const { data: specificPayments, error: specificError } = await supabase
+        .from("client_payments")
+        .select("*")
+        .in("id", paymentIds);
+
+      if (specificError) {
+        throw new Error(`Failed to fetch specific payments: ${specificError.message}`);
+      }
+
+      payments = specificPayments || [];
+      console.log(`Found ${payments.length} specific payments to process`);
+    } else {
+      // Process only overdue payments when no specific IDs provided
+      const { data: overduePayments, error: overdueError } = await supabase
+        .from("client_payments")
+        .select("*")
+        .in("status", ["pending", "partially_paid"])
+        .lt("due_date", todayStr);
+
+      if (overdueError) {
+        throw new Error(`Failed to fetch overdue payments: ${overdueError.message}`);
+      }
+
+      payments = overduePayments || [];
+      console.log(`Found ${payments.length} overdue payments to process`);
     }
-
-    console.log(`Found ${payments?.length || 0} payments to process`);
 
     if (!payments || payments.length === 0) {
       return new Response(
-        JSON.stringify({ message: "No payments require reminders", sent: 0 }),
+        JSON.stringify({ 
+          message: paymentIds.length > 0 ? "No eligible payments found for selected IDs" : "No overdue payments require reminders", 
+          sent: 0 
+        }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -99,10 +139,16 @@ serve(async (req: Request): Promise<Response> => {
     // Create email lookup
     const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
-    // Categorize payments
-    const reminders: { payment: PaymentReminder; type: string }[] = [];
+    // Categorize and filter payments based on reminder rules
+    const reminders: { payment: PaymentReminder; type: string; reason: string }[] = [];
 
     for (const payment of payments) {
+      // Skip if already paid
+      if (payment.status === "paid") {
+        console.log(`Skipping payment ${payment.id} - already paid`);
+        continue;
+      }
+
       const profile = profileMap.get(payment.responsible_user_id);
       const paymentWithEmail: PaymentReminder = {
         ...payment,
@@ -112,12 +158,32 @@ serve(async (req: Request): Promise<Response> => {
 
       const dueDate = new Date(payment.due_date);
       
-      if (dueDate < today) {
-        reminders.push({ payment: paymentWithEmail, type: "overdue" });
-      } else if (payment.due_date === todayStr) {
-        reminders.push({ payment: paymentWithEmail, type: "due_today" });
-      } else {
-        reminders.push({ payment: paymentWithEmail, type: "upcoming" });
+      // Rule a: 72-hour reminder
+      if (dueDate <= seventyTwoHoursFromNow && dueDate >= today && !payment.last_72h_reminder_sent) {
+        reminders.push({ 
+          payment: paymentWithEmail, 
+          type: "upcoming_72h", 
+          reason: "Payment due within 72 hours" 
+        });
+      }
+      // Rule b: 24-hour reminder
+      else if (dueDate <= twentyFourHoursFromNow && dueDate >= today && !payment.last_24h_reminder_sent) {
+        reminders.push({ 
+          payment: paymentWithEmail, 
+          type: "upcoming_24h", 
+          reason: "Payment due within 24 hours" 
+        });
+      }
+      // Rule c: Overdue reminder
+      else if (dueDate < today && !payment.last_overdue_reminder_sent) {
+        reminders.push({ 
+          payment: paymentWithEmail, 
+          type: "overdue", 
+          reason: "Payment is overdue" 
+        });
+      }
+      else {
+        console.log(`Skipping payment ${payment.id} - reminder already sent or not eligible`);
       }
     }
 
@@ -127,7 +193,7 @@ serve(async (req: Request): Promise<Response> => {
     let successCount = 0;
     let failCount = 0;
 
-    for (const { payment, type } of reminders) {
+    for (const { payment, type, reason } of reminders) {
       if (!payment.responsible_email) {
         console.log(`Skipping payment ${payment.id} - no email found`);
         continue;
@@ -135,9 +201,9 @@ serve(async (req: Request): Promise<Response> => {
 
       const subject = type === "overdue"
         ? `⚠️ OVERDUE: Payment from ${payment.client_name}`
-        : type === "due_today"
-        ? `📅 DUE TODAY: Payment from ${payment.client_name}`
-        : `🔔 UPCOMING: Payment from ${payment.client_name} due soon`;
+        : type === "upcoming_24h"
+        ? `📅 DUE SOON: Payment from ${payment.client_name} (within 24h)`
+        : `🔔 UPCOMING: Payment from ${payment.client_name} (within 72h)`;
 
       const html = `
         <h2>Payment Reminder</h2>
@@ -146,6 +212,7 @@ serve(async (req: Request): Promise<Response> => {
         <p><strong>Amount:</strong> $${payment.invoice_amount.toLocaleString()}</p>
         <p><strong>Due Date:</strong> ${payment.due_date}</p>
         <p><strong>Status:</strong> ${payment.status}</p>
+        <p><strong>Reason:</strong> ${reason}</p>
         <p>Please take appropriate action.</p>
       `;
 
@@ -157,7 +224,20 @@ serve(async (req: Request): Promise<Response> => {
           html,
         });
         successCount++;
-        console.log(`Sent reminder for payment ${payment.id}`);
+        console.log(`Sent ${type} reminder for payment ${payment.id}`);
+
+        // Update the corresponding reminder timestamp
+        const updateField = type === "overdue" 
+          ? "last_overdue_reminder_sent" 
+          : type === "upcoming_24h" 
+          ? "last_24h_reminder_sent" 
+          : "last_72h_reminder_sent";
+
+        await supabase
+          .from("client_payments")
+          .update({ [updateField]: new Date().toISOString() })
+          .eq("id", payment.id);
+
       } catch (emailError) {
         failCount++;
         console.error(`Failed to send email for payment ${payment.id}:`, emailError);
@@ -170,6 +250,7 @@ serve(async (req: Request): Promise<Response> => {
         sent: successCount,
         failed: failCount,
         total: reminders.length,
+        processed_ids: reminders.map(r => r.payment.id),
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

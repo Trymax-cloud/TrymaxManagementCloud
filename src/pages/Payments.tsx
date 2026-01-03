@@ -8,17 +8,20 @@ import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { usePayments, useMyPayments, useOverduePayments } from "@/hooks/usePayments";
 import { useProfiles } from "@/hooks/useProfiles";
 import { useProjects } from "@/hooks/useProjects";
 import { useUserRole } from "@/hooks/useUserRole";
+import { usePaymentReminders, useDeletePayment } from "@/hooks/usePaymentReminders";
 import { CreatePaymentModal } from "@/components/payments/CreatePaymentModal";
 import { PaymentCard } from "@/components/payments/PaymentCard";
+import { DeletePaymentDialog } from "@/components/payments/DeletePaymentDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { 
   CreditCard, Plus, AlertCircle, IndianRupee, Clock, 
-  CheckCircle2, Search, Filter, Mail, Loader2 
+  CheckCircle2, Search, Filter, Mail, Loader2, Trash2
 } from "lucide-react";
 
 export default function Payments() {
@@ -28,10 +31,19 @@ export default function Payments() {
   const { data: overduePayments } = useOverduePayments();
   const { data: profiles } = useProfiles();
   const { data: projects } = useProjects();
+  const { sendReminders, isLoading: sendingReminders } = usePaymentReminders();
+  const { deletePayment, isLoading: deletingPayment } = useDeletePayment();
+  
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [sendingReminders, setSendingReminders] = useState(false);
+  const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [paymentToDelete, setPaymentToDelete] = useState<{
+    id: string;
+    clientName: string;
+    amount: number;
+  } | null>(null);
 
   const payments = isDirector ? allPayments : myPayments;
   const isLoading = isDirector ? allLoading : myLoading;
@@ -66,33 +78,46 @@ export default function Payments() {
   };
 
   const handleSendReminders = async () => {
-    setSendingReminders(true);
-    try {
-      console.log("Invoking send-payment-reminders function...");
-      const { data, error } = await supabase.functions.invoke("send-payment-reminders");
-      
-      console.log("Function response:", { data, error });
-      
-      if (error) {
-        console.error("Error sending reminders:", error);
-        toast.error(`Failed to send payment reminders: ${error.message || 'Unknown error'}`);
-        return;
-      }
-      
-      if (data?.sent > 0) {
-        toast.success(`Sent ${data.sent} payment reminder email(s)`);
-      } else {
-        toast.info("No payment reminders to send at this time");
-      }
-      
-      if (data?.errors?.length > 0) {
-        console.warn("Some emails failed:", data.errors);
-      }
-    } catch (err) {
-      console.error("Error invoking function:", err);
-      toast.error(`Failed to send payment reminders: ${err instanceof Error ? err.message : 'Unknown error'}`);
-    } finally {
-      setSendingReminders(false);
+    if (selectedPayments.length > 0) {
+      // Send reminders for selected payments
+      sendReminders({ payment_ids: selectedPayments });
+      setSelectedPayments([]); // Clear selection after sending
+    } else {
+      // Send reminders for all overdue payments
+      sendReminders({});
+    }
+  };
+
+  const handleSelectPayment = (paymentId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedPayments(prev => [...prev, paymentId]);
+    } else {
+      setSelectedPayments(prev => prev.filter(id => id !== paymentId));
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked && filteredPayments) {
+      setSelectedPayments(filteredPayments.map(p => p.id));
+    } else {
+      setSelectedPayments([]);
+    }
+  };
+
+  const handleDeletePayment = (payment: { id: string; client_name: string; invoice_amount: number }) => {
+    setPaymentToDelete({
+      id: payment.id,
+      clientName: payment.client_name,
+      amount: payment.invoice_amount,
+    });
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeletePayment = () => {
+    if (paymentToDelete) {
+      deletePayment(paymentToDelete.id);
+      setDeleteDialogOpen(false);
+      setPaymentToDelete(null);
     }
   };
   return (
@@ -117,6 +142,7 @@ export default function Payments() {
                   <Mail className="h-4 w-4" />
                 )}
                 Send Reminders
+                {selectedPayments.length > 0 && ` (${selectedPayments.length})`}
               </Button>
               <Button className="gap-2" onClick={() => setCreateModalOpen(true)}>
                 <Plus className="h-4 w-4" />
@@ -181,6 +207,34 @@ export default function Payments() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Selection Controls */}
+        {isDirector && filteredPayments && filteredPayments.length > 0 && (
+          <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="select-all"
+                checked={selectedPayments.length === filteredPayments.length && filteredPayments.length > 0}
+                onCheckedChange={handleSelectAll}
+              />
+              <label htmlFor="select-all" className="text-sm font-medium cursor-pointer">
+                Select All ({selectedPayments.length}/{filteredPayments.length})
+              </label>
+            </div>
+            {selectedPayments.length > 0 && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>{selectedPayments.length} payment{selectedPayments.length > 1 ? 's' : ''} selected</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedPayments([])}
+                >
+                  Clear Selection
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Filters */}
         <div className="flex flex-col gap-4 sm:flex-row">
@@ -257,6 +311,9 @@ export default function Payments() {
                 responsibleName={getProfileName(payment.responsible_user_id)}
                 projectName={getProjectName(payment.project_id)}
                 canEdit={isDirector || payment.responsible_user_id === profiles?.find(p => p.email)?.id}
+                isSelected={selectedPayments.includes(payment.id)}
+                onSelect={handleSelectPayment}
+                onDelete={isDirector ? handleDeletePayment : undefined}
               />
             ))}
           </div>
@@ -266,6 +323,17 @@ export default function Payments() {
       {isDirector && (
         <CreatePaymentModal open={createModalOpen} onOpenChange={setCreateModalOpen} />
       )}
+      
+      <DeletePaymentDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={confirmDeletePayment}
+        paymentInfo={paymentToDelete ? {
+          clientName: paymentToDelete.clientName,
+          amount: paymentToDelete.amount,
+        } : null}
+        isLoading={deletingPayment}
+      />
     </AppLayout>
   );
 }
