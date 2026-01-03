@@ -86,11 +86,15 @@ export default function Payments() {
   const handleTestEmail = async () => {
     try {
       const { data, error } = await supabase.functions.invoke("test-email", {
-        body: { email: "trymaxmanagement@gmail.com" } // Use the verified Resend account email
+        body: { email: "trymaxmanagement@gmail.com" } // Use verified account for testing
       });
       if (error) {
         console.error("Test email error:", error);
-        alert(`Test email failed: ${error.message}`);
+        if (error.message.includes("verify a domain")) {
+          alert(`Domain verification required!\n\nTo send emails to actual users:\n1. Go to https://resend.com/domains\n2. Add trymaxmanagement.com\n3. Add DNS records provided\n4. Wait for verification\n\nSee EMAIL_SETUP_GUIDE.md for detailed instructions`);
+        } else {
+          alert(`Test email failed: ${error.message}`);
+        }
       } else {
         console.log("Test email sent:", data);
         alert(`Test email sent successfully! Check trymaxmanagement@gmail.com inbox.\n\nDetails: ${JSON.stringify(data, null, 2)}`);
