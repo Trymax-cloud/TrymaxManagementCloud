@@ -19,7 +19,7 @@ import { CreatePaymentModal } from "@/components/payments/CreatePaymentModal";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { 
-  CalendarDays, Mail, Loader2, Plus, Search, IndianRupee, AlertTriangle, CheckCircle
+  CalendarDays, Mail, Loader2, Plus, Search, IndianRupee, AlertTriangle, CheckCircle, Clock, AlertCircle, CheckCircle2, Filter, CreditCard
 } from "lucide-react";
 
 export default function Payments() {
@@ -71,9 +71,12 @@ export default function Payments() {
 
   const handleSendReminders = async () => {
     if (selectedPayments.length > 0) {
-      // Send reminders for selected payments
-      sendReminders({ payment_ids: selectedPayments });
-      setSelectedPayments([]); // Clear selection after sending
+      try {
+        await sendReminders({ payment_ids: selectedPayments });
+        setSelectedPayments([]);
+      } catch (error) {
+        console.error("Failed to send reminders:", error);
+      }
     } else {
       // Send reminders for all overdue payments
       sendReminders({});
@@ -110,6 +113,7 @@ export default function Payments() {
       console.error("Delete failed:", error);
     }
   };
+
   return (
     <AppLayout title="Client Payments">
       <div className="space-y-6 animate-fade-in">
