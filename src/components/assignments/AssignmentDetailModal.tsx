@@ -45,7 +45,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useUpdateAssignment, useDeleteAssignment } from "@/hooks/useAssignments";
-import { useSimpleDeleteAssignment } from "@/hooks/useSimpleDeleteAssignment";
+import { useSimpleAssignmentDelete } from "@/hooks/useSimpleAssignmentDelete";
 import { supabase } from "@/integrations/supabase/client";
 import { type AssignmentWithRelations } from "@/types/assignment-relations";
 import type { Assignment } from "@/types/assignment";
@@ -74,7 +74,7 @@ export function AssignmentDetailModal({
 }: AssignmentDetailModalProps) {
   const { isDirector } = useUserRole();
   const updateAssignment = useUpdateAssignment();
-  const deleteAssignment = useSimpleDeleteAssignment();
+  const deleteAssignment = useSimpleAssignmentDelete();
   const [isDeleting, setIsDeleting] = useState(false);
   const [newRemark, setNewRemark] = useState(assignment?.remark || "");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -95,23 +95,12 @@ export function AssignmentDetailModal({
   };
 
   const handleDelete = () => {
-    console.log("🗑️ Starting delete for assignment:", assignment.id);
-    
-    // Close dialogs immediately
     setShowDeleteDialog(false);
     onOpenChange(false);
     
-    // Use the simple delete hook with proper error handling
     deleteAssignment.mutate(assignment.id, {
       onSuccess: () => {
-        console.log("✅ Assignment deleted successfully");
-        // Navigate back to assignments list instead of reload
         window.location.href = '/assignments';
-      },
-      onError: (error) => {
-        console.error("❌ Delete failed:", error);
-        // Show error through toast (handled by hook) and don't reopen modal to avoid confusion
-        // The user can try again by opening the modal fresh
       }
     });
   };
