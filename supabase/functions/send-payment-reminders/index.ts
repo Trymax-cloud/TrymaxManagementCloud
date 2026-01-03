@@ -155,7 +155,7 @@ serve(async (req: Request): Promise<Response> => {
 
         // Send email
         const emailResult = await resend.emails.send({
-          from: "EWPM System <noreply@trymaxmanagement.com>", // Production domain
+          from: "EWPM System <noreply@trymaxmanagement.in>", // Production domain
           to: [profile.email],
           subject,
           html: emailHtml,

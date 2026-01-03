@@ -12,7 +12,7 @@ To send emails to actual users (not just your verified account), you need to ver
 
 ### 2. Add Your Domain
 - Click "Add Domain"
-- Enter: `trymaxmanagement.com`
+- Enter: `trymaxmanagement.in`
 - Click "Add Domain"
 
 ### 3. Verify DNS Records
@@ -22,22 +22,22 @@ Resend will show you DNS records to add. You need to add these to your domain's 
 ```
 Type: TXT
 Name: _dmarc
-Value: v=DMARC1; p=none; rua=mailto:dmarc@trymaxmanagement.com
+Value: v=DMARC1; p=none; rua=mailto:dmarc@trymaxmanagement.in
 
 Type: TXT
-Name: trymaxmanagement.com
+Name: trymaxmanagement.in
 Value: v=spf1 include:spf.resend.com ~all
 
 Type: TXT
-Name: _dmarc.trymaxmanagement.com
-Value: v=DMARC1; p=none; rua=mailto:dmarc@trymaxmanagement.com
+Name: _dmarc.trymaxmanagement.in
+Value: v=DMARC1; p=none; rua=mailto:dmarc@trymaxmanagement.in
 
 Type: CNAME
-Name: _dmarc.trymaxmanagement.com
+Name: _dmarc.trymaxmanagement.in
 Value: dmarc.resend.com
 
 Type: CNAME
-Name: trymaxmanagement.com
+Name: trymaxmanagement.in
 Value: resend.com
 ```
 
@@ -48,7 +48,7 @@ Value: resend.com
 
 ### 5. Update Email Configuration
 Once verified, the system will automatically work with your domain:
-- From: `EWPM System <noreply@trymaxmanagement.com>`
+- From: `EWPM System <noreply@trymaxmanagement.in>`
 - To: Actual user email addresses
 
 ## 🎯 What This Enables

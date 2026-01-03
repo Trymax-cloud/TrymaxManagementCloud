@@ -91,7 +91,7 @@ export default function Payments() {
       if (error) {
         console.error("Test email error:", error);
         if (error.message.includes("verify a domain")) {
-          alert(`Domain verification required!\n\nTo send emails to actual users:\n1. Go to https://resend.com/domains\n2. Add trymaxmanagement.com\n3. Add DNS records provided\n4. Wait for verification\n\nSee EMAIL_SETUP_GUIDE.md for detailed instructions`);
+          alert(`Domain verification required!\n\nTo send emails to actual users:\n1. Go to https://resend.com/domains\n2. Add trymaxmanagement.in\n3. Add DNS records provided\n4. Wait for verification\n\nSee EMAIL_SETUP_GUIDE.md for detailed instructions`);
         } else {
           alert(`Test email failed: ${error.message}`);
         }

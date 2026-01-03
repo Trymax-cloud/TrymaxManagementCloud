@@ -43,7 +43,7 @@ serve(async (req: Request): Promise<Response> => {
 
     try {
       const emailResult = await resend.emails.send({
-        from: "EWPM System <noreply@trymaxmanagement.com>", // Production domain
+        from: "EWPM System <noreply@trymaxmanagement.in>", // Production domain
         to: [testEmail],
         subject: "✅ Test Email - EWPM System Working",
         html,
