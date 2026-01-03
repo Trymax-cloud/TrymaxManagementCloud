@@ -23,7 +23,6 @@ const Payments = lazy(() => import("./pages/Payments"));
 const DailySummary = lazy(() => import("./pages/DailySummary"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Settings = lazy(() => import("./pages/Settings"));
-const Profile = lazy(() => import("./pages/Profile"));
 const Messages = lazy(() => import("./pages/Messages"));
 const Meetings = lazy(() => import("./pages/Meetings"));
 const Reports = lazy(() => import("./pages/Reports"));
@@ -78,7 +77,6 @@ const App = () => (
                   <Route path="/meetings" element={<ProtectedRoute><Meetings /></ProtectedRoute>} />
                   <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-                  <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                   
                   <Route path="*" element={<NotFound />} />
                 </Routes>

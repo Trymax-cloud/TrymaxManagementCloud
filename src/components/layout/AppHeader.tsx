@@ -13,7 +13,6 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
-import { NavLink } from "@/components/NavLink";
 
 interface AppHeaderProps {
   title?: string;
@@ -66,23 +65,8 @@ export function AppHeader({ title = "Dashboard" }: AppHeaderProps) {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <NavLink 
-                to="/profile" 
-                className="w-full cursor-pointer"
-                activeClassName="bg-accent"
-              >
-                Profile
-              </NavLink>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <NavLink 
-                to="/settings" 
-                className="w-full cursor-pointer"
-                activeClassName="bg-accent"
-              >
-                Settings
-              </NavLink>
+            <DropdownMenuItem onClick={() => window.location.href = '/settings'} className="w-full cursor-pointer">
+              Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut} className="text-destructive">
