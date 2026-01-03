@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { notifyDesktop } from "@/utils/notifications";
+import { notificationManager } from "@/utils/notificationManager";
 
 type RealtimePayload<T> = {
   eventType: "INSERT" | "UPDATE" | "DELETE";
@@ -51,6 +51,18 @@ export function useRealtimeAssignments() {
                 description: `You have been assigned: ${newAssignment.title}`,
                 variant: newAssignment.priority === "emergency" ? "destructive" : "default",
               });
+              
+              // Queue desktop notification
+              notificationManager.addNotificationEvent({
+                type: 'new-assignment',
+                data: {
+                  id: payload.new.id,
+                  title: newAssignment.title,
+                  priority: newAssignment.priority,
+                  assignee_id: newAssignment.assignee_id,
+                },
+                timestamp: Date.now(),
+              });
             }
           }
 
@@ -70,12 +82,16 @@ export function useRealtimeAssignments() {
                 description: `"${updated.title}" marked as completed`,
               });
               
-              // Desktop notification for task completion
-              notifyDesktop({
-                title: "Task Completed! 🎉",
-                message: `"${updated.title}" has been marked as completed`,
-                tag: `task-completed-${payload.new.id}`,
-                requireInteraction: false,
+              // Queue desktop notification
+              notificationManager.addNotificationEvent({
+                type: 'task-completed',
+                data: {
+                  id: payload.new.id,
+                  title: updated.title,
+                  priority: updated.priority,
+                  assignee_id: updated.assignee_id,
+                },
+                timestamp: Date.now(),
               });
             }
             
@@ -85,12 +101,16 @@ export function useRealtimeAssignments() {
               const now = new Date();
               
               if (dueDate < now) {
-                const priority = updated.priority === "emergency" ? "🚨 URGENT" : "⚠️ Overdue";
-                notifyDesktop({
-                  title: priority,
-                  message: `"${updated.title}" is overdue!`,
-                  tag: `task-overdue-${payload.new.id}`,
-                  requireInteraction: updated.priority === "emergency",
+                // Queue desktop notification
+                notificationManager.addNotificationEvent({
+                  type: 'task-overdue',
+                  data: {
+                    id: payload.new.id,
+                    title: updated.title,
+                    priority: updated.priority,
+                    assignee_id: updated.assignee_id,
+                  },
+                  timestamp: Date.now(),
                 });
               }
             }
@@ -101,6 +121,8 @@ export function useRealtimeAssignments() {
 
     return () => {
       supabase.removeChannel(channel);
+      // Clean up notification manager on unmount
+      notificationManager.clear();
     };
   }, [user?.id, queryClient]);
 }
