@@ -12,7 +12,8 @@ import { CreateAssignmentModal } from "@/components/assignments/CreateAssignment
 import { AssignmentDetailModal } from "@/components/assignments/AssignmentDetailModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
-import { useAssignmentStats, useAssignments, type Assignment } from "@/hooks/useAssignments";
+import { useAssignmentStats, useAssignments, useOverdueAssignments, type Assignment } from "@/hooks/useAssignments";
+import { useAssignmentsWithProfiles, useOverdueAssignmentsWithProfiles } from "@/hooks/useAssignmentsWithProfiles";
 import { useProjects } from "@/hooks/useProjects";
 import { useProfiles } from "@/hooks/useProfiles";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -21,7 +22,8 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { isDirector, isLoading: roleLoading } = useUserRole();
   const { data: stats, isLoading: statsLoading } = useAssignmentStats();
-  const { data: allAssignments } = useAssignments();
+  const { data: allAssignments } = useAssignmentsWithProfiles();
+  const { data: overdueAssignments } = useOverdueAssignmentsWithProfiles();
   const { data: projects } = useProjects();
   const { data: profiles } = useProfiles();
 
@@ -35,9 +37,7 @@ export default function Dashboard() {
   const directorStats = {
     totalEmployees: profiles?.length || 0,
     activeProjects: projects?.filter(p => p.status === "active").length || 0,
-    overdueAssignments: allAssignments?.filter(a => 
-      a.due_date && new Date(a.due_date) < new Date() && a.status !== "completed"
-    ).length || 0,
+    overdueAssignments: overdueAssignments?.length || 0,
   };
 
   if (roleLoading) {

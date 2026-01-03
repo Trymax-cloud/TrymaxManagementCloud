@@ -12,13 +12,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge, PriorityBadge } from "@/components/ui/status-badge";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useMyAssignments, useAllAssignments, type Assignment } from "@/hooks/useAssignments";
+import { useMyAssignmentsWithProfiles, useAssignmentsWithProfiles } from "@/hooks/useAssignmentsWithProfiles";
 import { useSaveDailySummary, useDailySummaries, useAllEmployeeDailySummaries } from "@/hooks/useDailySummaryData";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useProfiles } from "@/hooks/useProfiles";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/hooks/useAssignmentTimeTracking";
+import type { AssignmentPriority, AssignmentStatus } from "@/types";
 
 export default function DailySummary() {
   const { user } = useAuth();
@@ -28,8 +29,8 @@ export default function DailySummary() {
   const [hasUnsavedNotes, setHasUnsavedNotes] = useState(false);
   const [expandedEmployees, setExpandedEmployees] = useState<Set<string>>(new Set());
 
-  const { data: myAssignments, isLoading: myLoading } = useMyAssignments();
-  const { data: allAssignments, isLoading: allLoading } = useAllAssignments();
+  const { data: myAssignments, isLoading: myLoading } = useMyAssignmentsWithProfiles();
+  const { data: allAssignments, isLoading: allLoading } = useAssignmentsWithProfiles();
   const { data: profiles } = useProfiles();
   const { data: employeeSummaries, isLoading: summariesLoading } = useAllEmployeeDailySummaries(selectedDate);
   const { data: savedSummaries } = useDailySummaries(selectedDate, selectedDate, user?.id);
@@ -489,8 +490,8 @@ export default function DailySummary() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <PriorityBadge priority={assignment.priority} />
-                        <StatusBadge status={assignment.status} />
+                        <PriorityBadge priority={assignment.priority as AssignmentPriority} />
+                        <StatusBadge status={assignment.status as AssignmentStatus} />
                       </div>
                     </div>
                   ))}
@@ -537,7 +538,7 @@ export default function DailySummary() {
                           </p>
                         )}
                       </div>
-                      <PriorityBadge priority={assignment.priority} />
+                      <PriorityBadge priority={assignment.priority as AssignmentPriority} />
                     </div>
                   ))}
                 </div>

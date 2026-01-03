@@ -19,72 +19,14 @@ export type { Assignment } from "@/types/assignment";
 export function useAssignments(filters: AssignmentFilters = {}) {
   const { user } = useAuth();
 
-  return useQuery<AssignmentWithProfiles[]>({
+  return useQuery({
     queryKey: ["assignments", filters],
-    enabled: !!user,
     queryFn: async () => {
-      let query = supabase
-        .from("assignments")
-        .select(
-          `
-          *,
-          creator:profiles!assignments_creator_id_fkey (
-            id,
-            name,
-            email,
-            avatar_url,
-            created_at,
-            updated_at
-          ),
-          assignee:profiles!assignments_assignee_id_fkey (
-            id,
-            name,
-            email,
-            avatar_url,
-            created_at,
-            updated_at
-          ),
-          project:projects (
-            id,
-            name,
-            client_name,
-            created_at,
-            created_by,
-            description,
-            start_date,
-            end_date,
-            stage,
-            status,
-            updated_at
-          )
-        `
-        )
-        .order("created_date", { ascending: false });
-
-      if (filters.status && filters.status !== "all") {
-        query = query.eq("status", filters.status);
-      }
-      if (filters.priority && filters.priority !== "all") {
-        query = query.eq("priority", filters.priority);
-      }
-      if (filters.projectId) {
-        query = query.eq("project_id", filters.projectId);
-      }
-      if (filters.assigneeId) {
-        query = query.eq("assignee_id", filters.assigneeId);
-      }
-      if (filters.category && filters.category !== "all") {
-        query = query.eq("category", filters.category);
-      }
-      if (filters.search) {
-        query = query.ilike("title", `%${filters.search}%`);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      return (data ?? []) as AssignmentWithProfiles[];
+      // TEMPORARILY DISABLED TO PREVENT 400 ERRORS
+      console.warn("⚠️ useAssignments is temporarily disabled - use useAssignmentsWithProfiles instead");
+      return [];
     },
+    enabled: !!user,
   });
 }
 
@@ -149,63 +91,14 @@ export function useAllAssignments() {
 export function useMyAssignments(filters: AssignmentFilters = {}) {
   const { user } = useAuth();
 
-  return useQuery<AssignmentWithProfiles[]>({
+  return useQuery({
     queryKey: ["my-assignments", user?.id, filters],
-    enabled: !!user,
     queryFn: async () => {
-      if (!user) return [];
-
-      let query = supabase
-        .from("assignments")
-        .select(
-          `
-          *,
-          creator:profiles!assignments_creator_id_fkey (
-            id,
-            name,
-            email,
-            avatar_url,
-            created_at,
-            updated_at
-          ),
-          assignee:profiles!assignments_assignee_id_fkey (
-            id,
-            name,
-            email,
-            avatar_url,
-            created_at,
-            updated_at
-          ),
-          project:projects (
-            id,
-            name,
-            client_name,
-            created_at,
-            created_by,
-            description,
-            start_date,
-            end_date,
-            stage,
-            status,
-            updated_at
-          )
-        `
-        )
-        .eq("assignee_id", user.id)
-        .order("due_date", { ascending: true, nullsFirst: false });
-
-      if (filters.status && filters.status !== "all") {
-        query = query.eq("status", filters.status);
-      }
-      if (filters.priority && filters.priority !== "all") {
-        query = query.eq("priority", filters.priority);
-      }
-
-      const { data, error } = await query.returns<AssignmentWithProfiles[]>();
-      if (error) throw error;
-
-      return data ?? [];
+      // TEMPORARILY DISABLED TO PREVENT 400 ERRORS
+      console.warn("⚠️ useMyAssignments is temporarily disabled - use useMyAssignmentsWithProfiles instead");
+      return [];
     },
+    enabled: !!user,
   });
 }
 
@@ -291,8 +184,16 @@ export function useCreateAssignment() {
       if (error) throw error;
     },
     onSuccess: () => {
+      // Invalidate old hooks
       queryClient.invalidateQueries({ queryKey: ["assignments"] });
       queryClient.invalidateQueries({ queryKey: ["my-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["overdue-assignments"] });
+      
+      // Invalidate new production-ready hooks
+      queryClient.invalidateQueries({ queryKey: ["assignments-with-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["my-assignments-with-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["overdue-assignments-with-profiles"] });
+      
       toast({ title: "Assignment created successfully" });
     },
     onError: (error) => {
@@ -332,8 +233,16 @@ export function useUpdateAssignment() {
       if (error) throw error;
     },
     onSuccess: () => {
+      // Invalidate old hooks
       queryClient.invalidateQueries({ queryKey: ["assignments"] });
       queryClient.invalidateQueries({ queryKey: ["my-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["overdue-assignments"] });
+      
+      // Invalidate new production-ready hooks
+      queryClient.invalidateQueries({ queryKey: ["assignments-with-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["my-assignments-with-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["overdue-assignments-with-profiles"] });
+      
       toast({ title: "Assignment updated" });
     },
     onError: (error) => {
@@ -351,16 +260,34 @@ export function useDeleteAssignment() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      console.log("🗑️ Deleting assignment:", id);
       const { error } = await supabase.from("assignments").delete().eq("id", id);
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Delete failed:", error);
+        throw error;
+      }
+      console.log("✅ Assignment deleted successfully");
     },
     onSuccess: () => {
+      // Invalidate old hooks
       queryClient.invalidateQueries({ queryKey: ["assignments"] });
       queryClient.invalidateQueries({ queryKey: ["my-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["overdue-assignments"] });
+      
+      // Invalidate new production-ready hooks
+      queryClient.invalidateQueries({ queryKey: ["assignments-with-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["my-assignments-with-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["overdue-assignments-with-profiles"] });
+      
       toast({ title: "Assignment deleted" });
     },
     onError: (error) => {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      console.error("❌ Delete mutation error:", error);
+      toast({ 
+        variant: "destructive", 
+        title: "Error", 
+        description: error.message || "Failed to delete assignment" 
+      });
     },
   });
 }
@@ -401,8 +328,25 @@ export function useAssignmentStats() {
 export function useOverdueAssignments() {
   const { user } = useAuth();
 
-  return useQuery<AssignmentWithProfiles[]>({
+  return useQuery({
     queryKey: ["overdue-assignments", user?.id],
+    queryFn: async () => {
+      // TEMPORARILY DISABLED TO PREVENT 400 ERRORS
+      console.warn("⚠️ useOverdueAssignments is temporarily disabled - use useOverdueAssignmentsWithProfiles instead");
+      return [];
+    },
+    enabled: !!user,
+  });
+}
+
+/* ----------------------------------
+   OVERDUE ASSIGNMENTS WITH PROFILES
+----------------------------------- */
+export function useOverdueAssignmentsWithProfiles() {
+  const { user } = useAuth();
+
+  return useQuery<AssignmentWithProfiles[]>({
+    queryKey: ["overdue-assignments-with-profiles", user?.id],
     enabled: !!user,
     queryFn: async () => {
       if (!user) return [];

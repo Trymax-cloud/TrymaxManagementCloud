@@ -8,6 +8,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useProjects, Project, PROJECT_STAGES, ProjectStage } from "@/hooks/useProjects";
 import { useAssignments } from "@/hooks/useAssignments";
+import { useAssignmentsWithProfiles } from "@/hooks/useAssignmentsWithProfiles";
 import { useUserRole } from "@/hooks/useUserRole";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
 import { ProjectDetailModal } from "@/components/projects/ProjectDetailModal";
@@ -26,7 +27,7 @@ const STAGE_ICONS: Record<ProjectStage, React.ReactNode> = {
 export default function Projects() {
   const { isDirector } = useUserRole();
   const { data: projects, isLoading } = useProjects();
-  const { data: assignments } = useAssignments();
+  const { data: assignments } = useAssignmentsWithProfiles();
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);

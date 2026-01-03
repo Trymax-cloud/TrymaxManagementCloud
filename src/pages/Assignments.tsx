@@ -10,18 +10,23 @@ import { AssignmentCard } from "@/components/assignments/AssignmentCard";
 import { CreateAssignmentModal } from "@/components/assignments/CreateAssignmentModal";
 import { AssignmentDetailModal } from "@/components/assignments/AssignmentDetailModal";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { AssignmentDebugTest } from "@/components/debug/AssignmentDebugTest";
 import { StatusBadge, PriorityBadge } from "@/components/ui/status-badge";
 import { CategoryBadge } from "@/components/ui/category-badge";
 import { useAssignments, useMyAssignments, type Assignment, type AssignmentFilters } from "@/hooks/useAssignments";
+import { type AssignmentWithRelations } from "@/types/assignment-relations";
 import { useSimpleAssignments, useSimpleMyAssignments } from "@/hooks/useSimpleAssignments";
+import { useAssignmentsWithProfiles, useMyAssignmentsWithProfiles } from "@/hooks/useAssignmentsWithProfiles";
 import { useActiveProjects } from "@/hooks/useProjects";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useAuth } from "@/hooks/useAuth";
 import { useAutoArchive, useManualArchive } from "@/hooks/useAutoArchive";
 import { useDebouncedValue } from "@/hooks/useVirtualScroll";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { TASK_CATEGORIES } from "@/lib/constants";
+import type { AssignmentPriority, AssignmentStatus } from "@/types";
 
 const ITEMS_PER_PAGE = 12;
 
@@ -29,6 +34,7 @@ type ArchiveFilter = "active" | "archived" | "all";
 
 export default function Assignments() {
   const { isDirector } = useUserRole();
+  const { user } = useAuth();
   const [filters, setFilters] = useState<AssignmentFilters>({});
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -36,16 +42,16 @@ export default function Assignments() {
   const [currentPage, setCurrentPage] = useState(1);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [selectedAssignment, setSelectedAssignment] = useState<AssignmentWithRelations | null>(null);
 
   const { data: projects } = useActiveProjects();
   
   // Debounce search for better performance
   const debouncedSearch = useDebouncedValue(search, 300);
   
-  // Use all assignments for directors, my assignments for employees
-  const { data: allAssignments, isLoading: allLoading } = useSimpleAssignments({ ...filters, search: debouncedSearch });
-  const { data: myAssignments, isLoading: myLoading } = useSimpleMyAssignments({ ...filters });
+  // Use production-ready hooks with profiles
+  const { data: allAssignments, isLoading: allLoading } = useAssignmentsWithProfiles({ ...filters, search: debouncedSearch });
+  const { data: myAssignments, isLoading: myLoading } = useMyAssignmentsWithProfiles({ ...filters });
 
   const assignments = isDirector ? allAssignments : myAssignments;
   const isLoading = isDirector ? allLoading : myLoading;
@@ -110,7 +116,7 @@ export default function Assignments() {
     }
   }, [isTaskArchived, manualArchive, manualUnarchive]);
 
-  const handleAssignmentClick = useCallback((assignment: Assignment) => {
+  const handleAssignmentClick = useCallback((assignment: AssignmentWithRelations) => {
     setSelectedAssignment(assignment);
   }, []);
 
@@ -359,10 +365,10 @@ export default function Assignments() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <StatusBadge status={assignment.status} />
+                        <StatusBadge status={assignment.status as AssignmentStatus} />
                       </td>
                       <td className="px-4 py-3">
-                        <PriorityBadge priority={assignment.priority} />
+                        <PriorityBadge priority={assignment.priority as AssignmentPriority} />
                       </td>
                       <td className="px-4 py-3">
                         <CategoryBadge category={assignment.category} />
@@ -452,6 +458,9 @@ export default function Assignments() {
           onOpenChange={(open) => !open && setSelectedAssignment(null)}
         />
       )}
+      
+      {/* DEBUG COMPONENT - TEMPORARY */}
+      {/* <AssignmentDebugTest /> */}
     </AppLayout>
   );
 }

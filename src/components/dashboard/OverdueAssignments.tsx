@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { AssignmentCard } from "@/components/assignments/AssignmentCard";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useOverdueAssignments, type Assignment } from "@/hooks/useAssignments";
+import { useOverdueAssignmentsWithProfiles } from "@/hooks/useAssignmentsWithProfiles";
 
 interface OverdueAssignmentsProps {
   onAssignmentClick: (assignment: Assignment) => void;
@@ -14,7 +15,7 @@ interface OverdueAssignmentsProps {
 export const OverdueAssignments = memo(function OverdueAssignments({ 
   onAssignmentClick 
 }: OverdueAssignmentsProps) {
-  const { data: overdueAssignments, isLoading } = useOverdueAssignments();
+  const { data: overdueAssignments, isLoading } = useOverdueAssignmentsWithProfiles();
 
   const handleAssignmentClick = useCallback(
     (assignment: Assignment) => () => onAssignmentClick(assignment),

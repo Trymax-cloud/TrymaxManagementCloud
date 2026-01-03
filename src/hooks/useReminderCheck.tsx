@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyAssignments } from "@/hooks/useAssignments";
+import { useMyAssignmentsWithProfiles } from "@/hooks/useAssignmentsWithProfiles";
 import { useMyPayments } from "@/hooks/usePayments";
 import { toast } from "@/hooks/use-toast";
 import { differenceInDays, isToday, isTomorrow, parseISO } from "date-fns";
@@ -42,7 +43,7 @@ function wasReminderShownRecently(id: string): boolean {
 
 export function useReminderCheck() {
   const { user } = useAuth();
-  const { data: assignments } = useMyAssignments();
+  const { data: assignments } = useMyAssignmentsWithProfiles();
   const { data: payments } = useMyPayments();
 
   const checkReminders = useCallback(() => {

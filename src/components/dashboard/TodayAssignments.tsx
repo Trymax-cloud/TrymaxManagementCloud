@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { AssignmentCard } from "@/components/assignments/AssignmentCard";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useMyAssignments, type Assignment } from "@/hooks/useAssignments";
+import { useMyAssignmentsWithProfiles } from "@/hooks/useAssignmentsWithProfiles";
 
 interface TodayAssignmentsProps {
   onAssignmentClick: (assignment: Assignment) => void;
@@ -15,7 +16,7 @@ interface TodayAssignmentsProps {
 export const TodayAssignments = memo(function TodayAssignments({ 
   onAssignmentClick 
 }: TodayAssignmentsProps) {
-  const { data: assignments, isLoading } = useMyAssignments();
+  const { data: assignments, isLoading } = useMyAssignmentsWithProfiles();
 
   const todayAssignments = useMemo(() => 
     assignments?.filter((a) => {

@@ -22,3 +22,32 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# --------------------
+# Environment variables (CRITICAL)
+# --------------------
+.env
+.env.*
+!.env.example
+
+# --------------------
+# Vercel
+# --------------------
+.vercel/
+
+# --------------------
+# Supabase local files
+# --------------------
+supabase/.temp/
+supabase/.branches/
+
+# --------------------
+# Electron build output
+# --------------------
+release/
+electron/dist/
+
+# --------------------
+# Local project exports / backups
+# --------------------
+TrymaxManagementCloud/

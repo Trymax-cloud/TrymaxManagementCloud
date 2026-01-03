@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { useAssignments } from "@/hooks/useAssignments";
+import { useAssignmentsWithProfiles } from "@/hooks/useAssignmentsWithProfiles";
 import { Project, PROJECT_STAGES, ProjectStage, useUpdateProjectStage } from "@/hooks/useProjects";
 import { useUserRole } from "@/hooks/useUserRole";
 
@@ -24,7 +25,7 @@ const STAGE_ICONS: Record<ProjectStage, React.ReactNode> = {
 };
 
 export function ProjectDetailModal({ project, open, onOpenChange }: ProjectDetailModalProps) {
-  const { data: allAssignments } = useAssignments();
+  const { data: allAssignments } = useAssignmentsWithProfiles();
   const { isDirector } = useUserRole();
   const updateStageMutation = useUpdateProjectStage();
   

@@ -63,6 +63,8 @@ export function useSimpleAssignments(filters: AssignmentFilters = {}) {
       }
 
       const { data, error } = await query;
+      console.log("DEBUG: Simple assignments data:", data);
+      console.log("DEBUG: Simple assignments error:", error);
       if (error) throw error;
       return data || [];
     },
@@ -92,6 +94,8 @@ export function useSimpleMyAssignments(filters: AssignmentFilters = {}) {
       }
 
       const { data, error } = await query;
+      console.log("DEBUG: Simple my assignments data:", data);
+      console.log("DEBUG: Simple my assignments error:", error);
       if (error) throw error;
       return data || [];
     },

@@ -45,10 +45,21 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useUpdateAssignment, useDeleteAssignment } from "@/hooks/useAssignments";
+import { useSimpleDeleteAssignment } from "@/hooks/useSimpleDeleteAssignment";
+import { supabase } from "@/integrations/supabase/client";
 import { type AssignmentWithRelations } from "@/types/assignment-relations";
+import type { Assignment } from "@/types/assignment";
 import { useUserRole } from "@/hooks/useUserRole";
 import { cn } from "@/lib/utils";
 import { TASK_CATEGORIES, type TaskCategory } from "@/lib/constants";
+import type { AssignmentPriority, AssignmentStatus } from "@/types";
+
+// Declare window property for TypeScript
+declare global {
+  interface Window {
+    __pendingDeleteAssignmentId?: string;
+  }
+}
 
 interface AssignmentDetailModalProps {
   assignment: AssignmentWithRelations | null;
@@ -63,8 +74,9 @@ export function AssignmentDetailModal({
 }: AssignmentDetailModalProps) {
   const { isDirector } = useUserRole();
   const updateAssignment = useUpdateAssignment();
-  const deleteAssignment = useDeleteAssignment();
-  const [newRemark, setNewRemark] = useState("");
+  const deleteAssignment = useSimpleDeleteAssignment();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [newRemark, setNewRemark] = useState(assignment?.remark || "");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   if (!assignment) return null;
@@ -82,14 +94,28 @@ export function AssignmentDetailModal({
     }
   };
 
-  const handleDelete = async () => {
-    try {
-      await deleteAssignment.mutateAsync(assignment.id);
-      setShowDeleteDialog(false);
-      onOpenChange(false);
-    } catch {
-      // Error handled by mutation
-    }
+  const handleDelete = () => {
+    console.log("🗑️ Starting delete for assignment:", assignment.id);
+    
+    // Close dialogs immediately
+    setShowDeleteDialog(false);
+    onOpenChange(false);
+    
+    // Use the simple delete hook with proper error handling
+    deleteAssignment.mutate(assignment.id, {
+      onSuccess: () => {
+        console.log("✅ Assignment deleted successfully");
+        // Navigate back to assignments list instead of reload
+        window.location.href = '/assignments';
+      },
+      onError: (error) => {
+        console.error("❌ Delete failed:", error);
+        // Show error and reopen modal if delete fails
+        setTimeout(() => {
+          onOpenChange(true);
+        }, 100);
+      }
+    });
   };
 
   const creatorName = assignment.creator?.name || "Loading...";
@@ -115,8 +141,8 @@ export function AssignmentDetailModal({
                   Assignment details and status management
                 </DialogDescription>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <PriorityBadge priority={assignment.priority} />
-                  <StatusBadge status={assignment.status} />
+                  <PriorityBadge priority={assignment.priority as AssignmentPriority} />
+                  <StatusBadge status={assignment.status as AssignmentStatus} />
                   <CategoryBadge category={assignment.category} />
                 </div>
               </div>
@@ -336,10 +362,14 @@ export function AssignmentDetailModal({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteAssignment.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
             >
               {deleteAssignment.isPending ? (
-                <LoadingSpinner size="sm" />
+                <>
+                  <LoadingSpinner size="sm" />
+                  <span className="ml-2">Deleting...</span>
+                </>
               ) : (
                 "Delete"
               )}
