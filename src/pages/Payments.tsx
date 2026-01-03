@@ -78,56 +78,11 @@ export default function Payments() {
         console.error("Failed to send reminders:", error);
       }
     } else {
-      // Send reminders for all overdue payments
-      sendReminders({});
-    }
-  };
-
-  const handleTestEmail = async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke("test-email", {
-        body: { email: "trymaxmanagement@gmail.com" } // Use verified account for testing
-      });
-      if (error) {
-        console.error("Test email error:", error);
-        if (error.message.includes("verify a domain")) {
-          alert(`Domain verification required!\n\nTo send emails to actual users:\n1. Go to https://resend.com/domains\n2. Add trymaxmanagement.in\n3. Add DNS records provided\n4. Wait for verification\n\nSee EMAIL_SETUP_GUIDE.md for detailed instructions`);
-        } else {
-          alert(`Test email failed: ${error.message}`);
-        }
-      } else {
-        console.log("Test email sent:", data);
-        alert(`Test email sent successfully! Check trymaxmanagement@gmail.com inbox.\n\nDetails: ${JSON.stringify(data, null, 2)}`);
+      try {
+        await sendReminders({ payment_ids: overduePayments?.map(p => p.id) });
+      } catch (error) {
+        console.error("Failed to send reminders:", error);
       }
-    } catch (error) {
-      console.error("Test email failed:", error);
-      alert(`Test email failed: ${error}`);
-    }
-  };
-
-  const handleDebugEmails = async () => {
-    try {
-      // Test simple function first
-      const { data: simpleData, error: simpleError } = await supabase.functions.invoke("simple-test");
-      if (simpleError) {
-        console.error("Simple test error:", simpleError);
-        alert(`Simple test failed: ${simpleError.message}`);
-        return;
-      }
-      console.log("Simple test success:", simpleData);
-
-      // Then test debug function
-      const { data, error } = await supabase.functions.invoke("debug-emails");
-      if (error) {
-        console.error("Debug error:", error);
-        alert(`Debug error: ${error.message}\n\nSimple test worked: ${JSON.stringify(simpleData, null, 2)}`);
-      } else {
-        console.log("Debug info:", data);
-        alert(`Simple test: ${JSON.stringify(simpleData, null, 2)}\n\nDebug info: ${JSON.stringify(data, null, 2)}`);
-      }
-    } catch (error) {
-      console.error("Debug failed:", error);
-      alert(`Debug failed: ${error}`);
     }
   };
 
@@ -148,19 +103,22 @@ export default function Payments() {
   };
 
   const handleDeletePayment = async (payment: { id: string; client_name: string; invoice_amount: number }) => {
-    // Simple delete without confirmation modal
-    if (!confirm(`Are you sure you want to delete payment from ${payment.client_name} for ₹${payment.invoice_amount.toLocaleString('en-IN')}?`)) {
-      return;
-    }
-    
     try {
       await deletePayment(payment.id);
       // Clear selection if deleted payment was selected
       setSelectedPayments(prev => prev.filter(id => id !== payment.id));
-      // Show success message
-      console.log("Payment deleted successfully");
+      // Show success toast instead of alert
+      toast({
+        title: "Payment Deleted",
+        description: `Payment from ${payment.client_name} for ₹${payment.invoice_amount.toLocaleString('en-IN')} has been removed successfully`,
+      });
     } catch (error) {
       console.error("Delete failed:", error);
+      toast({
+        title: "Failed to Delete Payment",
+        description: error instanceof Error ? error.message : "An error occurred while deleting the payment",
+        variant: "destructive",
+      });
     }
   };
 
@@ -174,22 +132,6 @@ export default function Payments() {
           </p>
           {isDirector && (
             <div className="flex gap-2 flex-wrap">
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="gap-2" 
-                onClick={handleTestEmail}
-              >
-                📧 Test Email
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="gap-2" 
-                onClick={handleDebugEmails}
-              >
-                🔍 Debug Emails
-              </Button>
               <Button 
                 variant="outline" 
                 className="gap-2" 
