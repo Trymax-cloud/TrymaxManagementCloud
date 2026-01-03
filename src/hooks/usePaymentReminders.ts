@@ -74,18 +74,23 @@ export function useDeletePayment() {
 
   const deletePaymentMutation = useMutation({
     mutationFn: async (paymentId: string) => {
+      console.log("Attempting to delete payment:", paymentId);
+      
       const { error } = await supabase
         .from("client_payments")
         .delete()
         .eq("id", paymentId);
 
       if (error) {
+        console.error("Supabase delete error:", error);
         throw new Error(error.message);
       }
 
+      console.log("Payment deleted successfully:", paymentId);
       return paymentId;
     },
-    onSuccess: () => {
+    onSuccess: (paymentId) => {
+      console.log("Delete mutation success for payment:", paymentId);
       toast({
         title: "Payment Deleted",
         description: "Payment has been removed successfully",
@@ -96,6 +101,7 @@ export function useDeletePayment() {
       queryClient.refetchQueries({ queryKey: ["client_payments"] });
     },
     onError: (error) => {
+      console.error("Delete mutation error:", error);
       toast({
         title: "Failed to Delete Payment",
         description: error.message || "An error occurred while deleting the payment",

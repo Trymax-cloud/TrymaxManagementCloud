@@ -109,6 +109,15 @@ export default function Payments() {
       setSelectedPayments(prev => prev.filter(id => id !== payment.id));
     } catch (error) {
       console.error("Delete failed:", error);
+      // Add more detailed error logging
+      if (error instanceof Error) {
+        console.error("Error details:", {
+          message: error.message,
+          stack: error.stack,
+          paymentId: payment.id,
+          paymentName: payment.client_name
+        });
+      }
     }
   };
 
