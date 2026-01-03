@@ -285,8 +285,8 @@ function createProfessionalEmail(payment: PaymentReminder, profile: any, reminde
             
             <p>Please take immediate action to collect this payment. If you have already collected it, please update the payment status in the system.</p>
             
-            <a href="https://trymaxmanagement.in/payments" class="action-button">
-                View Payment Details →
+            <a href="https://trymaxmanagement.in" class="action-button">
+                Visit EWPM System →
             </a>
             
             <p><strong>Next Steps:</strong></p>
