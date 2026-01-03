@@ -158,8 +158,13 @@ serve(async (req: Request): Promise<Response> => {
 
       const dueDate = new Date(payment.due_date);
       
+      // Check if reminder tracking columns exist, if not, treat as never sent
+      const last72hSent = payment.last_72h_reminder_sent ? new Date(payment.last_72h_reminder_sent) : null;
+      const last24hSent = payment.last_24h_reminder_sent ? new Date(payment.last_24h_reminder_sent) : null;
+      const lastOverdueSent = payment.last_overdue_reminder_sent ? new Date(payment.last_overdue_reminder_sent) : null;
+      
       // Rule a: 72-hour reminder
-      if (dueDate <= seventyTwoHoursFromNow && dueDate >= today && !payment.last_72h_reminder_sent) {
+      if (dueDate <= seventyTwoHoursFromNow && dueDate >= today && !last72hSent) {
         reminders.push({ 
           payment: paymentWithEmail, 
           type: "upcoming_72h", 
@@ -167,7 +172,7 @@ serve(async (req: Request): Promise<Response> => {
         });
       }
       // Rule b: 24-hour reminder
-      else if (dueDate <= twentyFourHoursFromNow && dueDate >= today && !payment.last_24h_reminder_sent) {
+      else if (dueDate <= twentyFourHoursFromNow && dueDate >= today && !last24hSent) {
         reminders.push({ 
           payment: paymentWithEmail, 
           type: "upcoming_24h", 
@@ -175,7 +180,7 @@ serve(async (req: Request): Promise<Response> => {
         });
       }
       // Rule c: Overdue reminder
-      else if (dueDate < today && !payment.last_overdue_reminder_sent) {
+      else if (dueDate < today && !lastOverdueSent) {
         reminders.push({ 
           payment: paymentWithEmail, 
           type: "overdue", 
@@ -184,6 +189,9 @@ serve(async (req: Request): Promise<Response> => {
       }
       else {
         console.log(`Skipping payment ${payment.id} - reminder already sent or not eligible`);
+        console.log(`  Due date: ${payment.due_date}, Today: ${todayStr}`);
+        console.log(`  Status: ${payment.status}`);
+        console.log(`  Last reminders: 72h=${!!last72hSent}, 24h=${!!last24hSent}, overdue=${!!lastOverdueSent}`);
       }
     }
 
@@ -195,9 +203,11 @@ serve(async (req: Request): Promise<Response> => {
 
     for (const { payment, type, reason } of reminders) {
       if (!payment.responsible_email) {
-        console.log(`Skipping payment ${payment.id} - no email found`);
+        console.log(`Skipping payment ${payment.id} - no email found for responsible user ${payment.responsible_user_id}`);
         continue;
       }
+
+      console.log(`Sending ${type} reminder to responsible person: ${payment.responsible_email} for payment ${payment.id}`);
 
       const subject = type === "overdue"
         ? `⚠️ OVERDUE: Payment from ${payment.client_name}`
@@ -208,21 +218,26 @@ serve(async (req: Request): Promise<Response> => {
       const html = `
         <h2>Payment Reminder</h2>
         <p>Hello ${payment.responsible_name || "Team"},</p>
+        <p>You are responsible for the following payment:</p>
         <p><strong>Client:</strong> ${payment.client_name}</p>
         <p><strong>Amount:</strong> $${payment.invoice_amount.toLocaleString()}</p>
         <p><strong>Due Date:</strong> ${payment.due_date}</p>
         <p><strong>Status:</strong> ${payment.status}</p>
         <p><strong>Reason:</strong> ${reason}</p>
-        <p>Please take appropriate action.</p>
+        <p>Please take appropriate action to collect this payment.</p>
+        <hr>
+        <p><small>This is an automated reminder from the EWPM System.</small></p>
       `;
 
       try {
-        await resend.emails.send({
-          from: "EWPM System <noreply@yourdomain.com>",
+        const emailResult = await resend.emails.send({
+          from: "EWPM System <noreply@trymaxmanagement.com>",
           to: [payment.responsible_email],
           subject,
           html,
         });
+        
+        console.log(`Email sent successfully to ${payment.responsible_email}. Email ID: ${emailResult.data?.id}`);
         successCount++;
         console.log(`Sent ${type} reminder for payment ${payment.id}`);
 
@@ -233,10 +248,18 @@ serve(async (req: Request): Promise<Response> => {
           ? "last_24h_reminder_sent" 
           : "last_72h_reminder_sent";
 
-        await supabase
-          .from("client_payments")
-          .update({ [updateField]: new Date().toISOString() })
-          .eq("id", payment.id);
+        // Try to update the reminder timestamp, but don't fail if columns don't exist yet
+        try {
+          await supabase
+            .from("client_payments")
+            .update({ [updateField]: new Date().toISOString() })
+            .eq("id", payment.id);
+          console.log(`Updated ${updateField} for payment ${payment.id}`);
+        } catch (updateError) {
+          console.warn(`Failed to update reminder timestamp for payment ${payment.id}:`, updateError);
+          // Don't fail the whole operation if timestamp update fails
+          // This can happen if the migration hasn't been applied yet
+        }
 
       } catch (emailError) {
         failCount++;

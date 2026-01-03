@@ -91,8 +91,9 @@ export function useDeletePayment() {
         description: "Payment has been removed successfully",
       });
 
-      // Refresh payments data
+      // Refresh payments data immediately
       queryClient.invalidateQueries({ queryKey: ["client_payments"] });
+      queryClient.refetchQueries({ queryKey: ["client_payments"] });
     },
     onError: (error) => {
       toast({
