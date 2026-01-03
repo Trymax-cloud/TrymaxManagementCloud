@@ -156,9 +156,17 @@ serve(async (req: Request): Promise<Response> => {
         // Send email
         const emailResult = await resend.emails.send({
           from: "onboarding@resend.dev", // Use Resend's default verified domain
-          to: [profile.email],
-          subject,
-          html: emailHtml,
+          to: ["trymaxmanagement@gmail.com"], // Send to verified account email for testing
+          subject: `${subject} - For ${profile.name || profile.email}`,
+          html: `
+            <h2>Payment Reminder (Test Mode)</h2>
+            <p><strong>NOTE:</strong> This email is being sent to trymaxmanagement@gmail.com for testing purposes.</p>
+            <p><strong>Original Recipient:</strong> ${profile.name || profile.email} (${profile.email})</p>
+            <hr>
+            ${emailHtml}
+            <hr>
+            <p><small>To send emails to actual users, please verify your domain at resend.com/domains</small></p>
+          `,
         });
 
         if (emailResult.error) {

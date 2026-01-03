@@ -86,14 +86,14 @@ export default function Payments() {
   const handleTestEmail = async () => {
     try {
       const { data, error } = await supabase.functions.invoke("test-email", {
-        body: { email: "your-email@example.com" } // Replace with your email for testing
+        body: { email: "trymaxmanagement@gmail.com" } // Use the verified Resend account email
       });
       if (error) {
         console.error("Test email error:", error);
         alert(`Test email failed: ${error.message}`);
       } else {
         console.log("Test email sent:", data);
-        alert(`Test email sent successfully! Check your inbox.\n\nDetails: ${JSON.stringify(data, null, 2)}`);
+        alert(`Test email sent successfully! Check trymaxmanagement@gmail.com inbox.\n\nDetails: ${JSON.stringify(data, null, 2)}`);
       }
     } catch (error) {
       console.error("Test email failed:", error);
