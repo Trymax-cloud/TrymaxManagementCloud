@@ -155,7 +155,7 @@ serve(async (req: Request): Promise<Response> => {
 
         // Send email
         const emailResult = await resend.emails.send({
-          from: "EWPM System <payments@trymaxmanagement.com>",
+          from: "onboarding@resend.dev", // Use Resend's default verified domain
           to: [profile.email],
           subject,
           html: emailHtml,

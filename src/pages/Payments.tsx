@@ -83,6 +83,24 @@ export default function Payments() {
     }
   };
 
+  const handleTestEmail = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("test-email", {
+        body: { email: "your-email@example.com" } // Replace with your email for testing
+      });
+      if (error) {
+        console.error("Test email error:", error);
+        alert(`Test email failed: ${error.message}`);
+      } else {
+        console.log("Test email sent:", data);
+        alert(`Test email sent successfully! Check your inbox.\n\nDetails: ${JSON.stringify(data, null, 2)}`);
+      }
+    } catch (error) {
+      console.error("Test email failed:", error);
+      alert(`Test email failed: ${error}`);
+    }
+  };
+
   const handleDebugEmails = async () => {
     try {
       // Test simple function first
@@ -151,7 +169,15 @@ export default function Payments() {
             Track and manage client payment follow-ups
           </p>
           {isDirector && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="gap-2" 
+                onClick={handleTestEmail}
+              >
+                📧 Test Email
+              </Button>
               <Button 
                 variant="outline" 
                 size="sm"

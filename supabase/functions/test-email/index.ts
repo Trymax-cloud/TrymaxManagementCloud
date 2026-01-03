@@ -43,7 +43,7 @@ serve(async (req: Request): Promise<Response> => {
 
     try {
       const emailResult = await resend.emails.send({
-        from: "EWPM System <noreply@trymaxmanagement.com>",
+        from: "onboarding@resend.dev", // Use Resend's default verified domain
         to: [testEmail],
         subject: "✅ Test Email - EWPM System Working",
         html,
