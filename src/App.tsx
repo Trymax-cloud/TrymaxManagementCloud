@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +12,8 @@ import { RealtimeProvider } from "@/components/providers/RealtimeProvider";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { useElectronValidation } from "@/utils/validation";
+import { notificationPermissionManager } from "@/utils/notificationPermission";
+import { NotificationDebugger } from "@/components/debug/NotificationDebugger";
 
 // Lazy load pages for better performance
 const Auth = lazy(() => import("./pages/Auth"));
@@ -52,6 +54,19 @@ const App = () => {
   // Temporarily disable Electron validation to debug loading issues
   // useElectronValidation();
 
+  // Request notification permissions proactively
+  useEffect(() => {
+    // Request notification permission after a short delay to ensure page is loaded
+    const timer = setTimeout(() => {
+      console.log('Proactively requesting notification permissions...');
+      notificationPermissionManager.requestPermission().then(granted => {
+        console.log(`Notification permission ${granted ? 'granted' : 'denied'}`);
+      });
+    }, 2000); // 2 seconds after app load
+
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <SettingsProvider>
@@ -60,6 +75,7 @@ const App = () => {
           <Sonner />
           <OfflineIndicator />
           <InstallPrompt />
+          <NotificationDebugger />
           <BrowserRouter>
             <AuthProvider>
               <RealtimeProvider>
