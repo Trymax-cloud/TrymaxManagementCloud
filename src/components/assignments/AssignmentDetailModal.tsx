@@ -7,6 +7,7 @@ import {
   FolderKanban,
   MessageSquare,
   Tag,
+  Trash2,
 } from "lucide-react";
 import {
   Dialog,
@@ -32,10 +33,12 @@ import { StatusBadge, PriorityBadge } from "@/components/ui/status-badge";
 import { CategoryBadge } from "@/components/ui/category-badge";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useUpdateAssignment } from "@/hooks/useAssignments";
+import { useDirectDeleteAssignment } from "@/hooks/useDirectDeleteAssignment";
 import { supabase } from "@/integrations/supabase/client";
 import { type AssignmentWithRelations } from "@/types/assignment-relations";
 import type { Assignment } from "@/types/assignment";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { TASK_CATEGORIES, type TaskCategory } from "@/lib/constants";
 import type { AssignmentPriority, AssignmentStatus } from "@/types";
@@ -59,8 +62,13 @@ export function AssignmentDetailModal({
   onOpenChange,
 }: AssignmentDetailModalProps) {
   const { isDirector } = useUserRole();
+  const { user } = useAuth();
   const updateAssignment = useUpdateAssignment();
+  const deleteAssignment = useDirectDeleteAssignment();
   const [newRemark, setNewRemark] = useState(assignment?.remark || "");
+
+  // Check if user can delete this assignment
+  const canDelete = isDirector || (user && assignment?.assignee_id === user.id);
 
   if (!assignment) return null;
 
@@ -77,6 +85,14 @@ export function AssignmentDetailModal({
     }
   };
 
+  const handleDelete = () => {
+    deleteAssignment.mutate(assignment.id, {
+      onSuccess: () => {
+        onOpenChange(false); // Close modal after successful deletion
+      }
+    });
+  };
+
   const creatorName = assignment.creator?.name || "Loading...";
   const assigneeName = assignment.assignee?.name || "Loading...";
   const assigneeInitials = assigneeName
@@ -89,7 +105,7 @@ export function AssignmentDetailModal({
   return (
     <>
       <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) setNewRemark(""); onOpenChange(isOpen); }}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto transition-all duration-200">
+        <DialogContent className="relative max-w-2xl max-h-[90vh] overflow-y-auto transition-all duration-200">
           <DialogHeader>
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1 flex-1">
@@ -273,6 +289,22 @@ export function AssignmentDetailModal({
 
             <Separator />
           </div>
+          
+          {/* Delete button in bottom right */}
+          {canDelete && (
+            <div className="absolute bottom-4 right-4">
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDelete}
+                disabled={deleteAssignment.isPending}
+                className="flex items-center gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Assignment
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>

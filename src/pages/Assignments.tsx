@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { Search, Plus, Grid3X3, List, ChevronLeft, ChevronRight, Archive, ArchiveRestore, Tag, Trash2 } from "lucide-react";
+import { Search, Plus, Grid3X3, List, ChevronLeft, ChevronRight, Archive, ArchiveRestore, Tag } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,6 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useAuth } from "@/hooks/useAuth";
 import { useAutoArchive, useManualArchive } from "@/hooks/useAutoArchive";
 import { useDebouncedValue } from "@/hooks/useVirtualScroll";
-import { useDirectDeleteAssignment } from "@/hooks/useDirectDeleteAssignment";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +35,6 @@ type ArchiveFilter = "active" | "archived" | "all";
 export default function Assignments() {
   const { isDirector } = useUserRole();
   const { user } = useAuth();
-  const deleteAssignment = useDirectDeleteAssignment();
   const [filters, setFilters] = useState<AssignmentFilters>({});
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -117,16 +115,6 @@ export default function Assignments() {
       manualArchive(assignmentId);
     }
   }, [isTaskArchived, manualArchive, manualUnarchive]);
-
-  const handleDelete = useCallback((assignmentId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent row click (modal opening)
-    deleteAssignment.mutate(assignmentId);
-  }, [deleteAssignment]);
-
-  // Check if user can delete assignment
-  const canDeleteAssignment = useCallback((assignment: AssignmentWithRelations) => {
-    return isDirector || (user && assignment.assignee_id === user.id);
-  }, [isDirector, user]);
 
   const handleAssignmentClick = useCallback((assignment: AssignmentWithRelations) => {
     setSelectedAssignment(assignment);
@@ -413,18 +401,6 @@ export default function Assignments() {
                               <Archive className="h-4 w-4" />
                             )}
                           </Button>
-                          {canDeleteAssignment(assignment) && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => handleDelete(assignment.id, e)}
-                              title="Delete assignment"
-                              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                              disabled={deleteAssignment.isPending}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
                         </div>
                       </td>
                     </tr>
