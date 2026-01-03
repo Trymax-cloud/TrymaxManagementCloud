@@ -28,18 +28,25 @@ serve(async (req: Request): Promise<Response> => {
   try {
     console.log("Starting payment reminder check...");
 
-    // Get environment variables
+    // Get environment variables with explicit error checking
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
 
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error("Missing Supabase configuration");
+    // Explicit guard to throw error if env vars are missing
+    if (!supabaseUrl) {
+      throw new Error("Missing SUPABASE_URL in Edge Function secrets");
+    }
+
+    if (!supabaseKey) {
+      throw new Error("Missing SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY in Edge Function secrets");
     }
 
     if (!resendApiKey) {
-      throw new Error("Missing RESEND_API_KEY");
+      throw new Error("Missing RESEND_API_KEY in Edge Function secrets");
     }
+
+    console.log("Environment variables loaded successfully");
 
     // Create Supabase client
     const supabase = createClient(supabaseUrl, supabaseKey);
