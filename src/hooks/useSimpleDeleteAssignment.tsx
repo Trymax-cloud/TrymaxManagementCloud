@@ -11,43 +11,44 @@ export function useSimpleDeleteAssignment() {
     mutationFn: async (id: string) => {
       console.log("🗑️ Simple delete starting:", id);
       
-      // First check if assignment exists and user has permission
-      const { data: assignment, error: fetchError } = await supabase
-        .from("assignments")
-        .select("id, creator_id, assignee_id")
-        .eq("id", id)
-        .single();
-      
-      if (fetchError) {
-        console.error("❌ Failed to fetch assignment for delete:", fetchError);
-        throw new Error("Assignment not found or access denied");
-      }
-      
-      if (!assignment) {
-        throw new Error("Assignment not found");
-      }
-      
-      // Direct Supabase delete without extra complexity
-      const { error } = await supabase
-        .from("assignments")
-        .delete()
-        .eq("id", id);
+      try {
+        // Direct Supabase delete without permission check to avoid hanging
+        // Add timeout to prevent hanging
+        const deletePromise = supabase
+          .from("assignments")
+          .delete({ count: 'exact' })
+          .eq("id", id);
 
-      console.log("🗑️ Delete result:", { error });
-      
-      if (error) {
-        console.error("❌ Simple delete failed:", error);
-        // Provide more specific error messages
-        if (error.message.includes('permission denied')) {
-          throw new Error("You don't have permission to delete this assignment");
-        } else if (error.message.includes('foreign key')) {
-          throw new Error("Cannot delete assignment due to related records");
-        } else {
-          throw new Error(error.message || "Failed to delete assignment");
+        // Add timeout wrapper
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Delete operation timed out')), 10000); // 10 second timeout
+        });
+
+        const { error, count } = await Promise.race([deletePromise, timeoutPromise]) as any;
+
+        console.log("🗑️ Delete result:", { error, count });
+
+        if (error) {
+          console.error("❌ Simple delete failed:", error);
+          // Provide more specific error messages
+          if (error.message.includes('permission denied') || error.code === '42501') {
+            throw new Error("You don't have permission to delete this assignment");
+          } else if (error.message.includes('foreign key') || error.code === '23503') {
+            throw new Error("Cannot delete assignment due to related records");
+          } else {
+            throw new Error(error.message || "Failed to delete assignment");
+          }
         }
+
+        if (count === 0) {
+          throw new Error("Assignment not found or already deleted");
+        }
+
+        return { success: true, id };
+      } catch (err) {
+        console.error("❌ Delete operation failed:", err);
+        throw err;
       }
-      
-      return { success: true, id };
     },
     onSuccess: (deletedAssignment) => {
       console.log("✅ Assignment deleted successfully:", deletedAssignment);

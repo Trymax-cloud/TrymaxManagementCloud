@@ -110,10 +110,8 @@ export function AssignmentDetailModal({
       },
       onError: (error) => {
         console.error("❌ Delete failed:", error);
-        // Show error and reopen modal if delete fails
-        setTimeout(() => {
-          onOpenChange(true);
-        }, 100);
+        // Show error through toast (handled by hook) and don't reopen modal to avoid confusion
+        // The user can try again by opening the modal fresh
       }
     });
   };
