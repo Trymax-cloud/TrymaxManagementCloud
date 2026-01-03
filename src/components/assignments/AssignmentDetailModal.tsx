@@ -8,7 +8,6 @@ import {
   MessageSquare,
   History,
   Paperclip,
-  Trash2,
   Tag,
 } from "lucide-react";
 import {
@@ -34,18 +33,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge, PriorityBadge } from "@/components/ui/status-badge";
 import { CategoryBadge } from "@/components/ui/category-badge";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { useUpdateAssignment, useDeleteAssignment } from "@/hooks/useAssignments";
-import { useSimpleAssignmentDelete } from "@/hooks/useSimpleAssignmentDelete";
+import { useUpdateAssignment } from "@/hooks/useAssignments";
 import { supabase } from "@/integrations/supabase/client";
 import { type AssignmentWithRelations } from "@/types/assignment-relations";
 import type { Assignment } from "@/types/assignment";
@@ -74,10 +62,7 @@ export function AssignmentDetailModal({
 }: AssignmentDetailModalProps) {
   const { isDirector } = useUserRole();
   const updateAssignment = useUpdateAssignment();
-  const deleteAssignment = useSimpleAssignmentDelete();
-  const [isDeleting, setIsDeleting] = useState(false);
   const [newRemark, setNewRemark] = useState(assignment?.remark || "");
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   if (!assignment) return null;
 
@@ -92,17 +77,6 @@ export function AssignmentDetailModal({
     } catch {
       // Error handled by mutation
     }
-  };
-
-  const handleDelete = () => {
-    setShowDeleteDialog(false);
-    onOpenChange(false);
-    
-    deleteAssignment.mutate(assignment.id, {
-      onSuccess: () => {
-        window.location.href = '/assignments';
-      }
-    });
   };
 
   const creatorName = assignment.creator?.name || "Loading...";
@@ -318,52 +292,9 @@ export function AssignmentDetailModal({
                 </Badge>
               </div>
             </div>
-
-            {/* Actions */}
-            {isDirector && (
-              <div className="flex justify-end gap-3 pt-4 border-t">
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setShowDeleteDialog(true)}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </Button>
-              </div>
-            )}
           </div>
         </DialogContent>
       </Dialog>
-
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Assignment</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this assignment? This action cannot
-              be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={deleteAssignment.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
-            >
-              {deleteAssignment.isPending ? (
-                <>
-                  <LoadingSpinner size="sm" />
-                  <span className="ml-2">Deleting...</span>
-                </>
-              ) : (
-                "Delete"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }
