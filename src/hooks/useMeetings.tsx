@@ -198,6 +198,19 @@ export function useDeleteMeeting() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // First delete all participants for this meeting
+      const { error: participantsError } = await supabase
+        .from('meeting_participants')
+        .delete()
+        .eq('meeting_id', id);
+
+      if (participantsError) {
+        console.error('Error deleting meeting participants:', participantsError);
+        // Continue with meeting deletion even if participant deletion fails
+        // since the database should handle cascade deletion
+      }
+
+      // Then delete the meeting
       const { error } = await supabase
         .from('meetings')
         .delete()
@@ -208,7 +221,8 @@ export function useDeleteMeeting() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
       toast({
-        title: 'Meeting deleted'
+        title: 'Meeting deleted',
+        description: 'Meeting and all participants have been removed.'
       });
     },
     onError: (error: Error) => {
