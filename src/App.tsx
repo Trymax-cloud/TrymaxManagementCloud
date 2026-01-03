@@ -49,8 +49,8 @@ const queryClient = new QueryClient({
 });
 
 const App = () => {
-  // Enable Electron validation in development
-  useElectronValidation();
+  // Temporarily disable Electron validation to debug loading issues
+  // useElectronValidation();
 
   return (
     <SettingsProvider>
