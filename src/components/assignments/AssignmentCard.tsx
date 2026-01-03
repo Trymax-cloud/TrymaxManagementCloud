@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { type AssignmentWithRelations } from "@/types/assignment-relations";
 import { useDirectDeleteAssignment } from "@/hooks/useDirectDeleteAssignment";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AssignmentCardProps {
   assignment: AssignmentWithRelations;
@@ -23,7 +24,11 @@ export const AssignmentCard = memo(function AssignmentCard({
   showAssignee = false 
 }: AssignmentCardProps) {
   const { isDirector } = useUserRole();
+  const { user } = useAuth();
   const deleteAssignment = useDirectDeleteAssignment();
+  
+  // Check if user can delete this assignment
+  const canDelete = isDirector || (user && assignment.assignee_id === user.id);
   
   const dueDate = assignment.due_date ? new Date(assignment.due_date) : null;
   const isOverdue = dueDate && isPast(dueDate) && assignment.status !== "completed";
@@ -68,7 +73,7 @@ export const AssignmentCard = memo(function AssignmentCard({
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <CategoryBadge category={assignment.category} />
             <PriorityBadge priority={assignment.priority as any} />
-            {isDirector && (
+            {canDelete && (
               <Button
                 variant="ghost"
                 size="sm"

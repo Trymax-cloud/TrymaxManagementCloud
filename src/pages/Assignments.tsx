@@ -123,6 +123,11 @@ export default function Assignments() {
     deleteAssignment.mutate(assignmentId);
   }, [deleteAssignment]);
 
+  // Check if user can delete assignment
+  const canDeleteAssignment = useCallback((assignment: AssignmentWithRelations) => {
+    return isDirector || (user && assignment.assignee_id === user.id);
+  }, [isDirector, user]);
+
   const handleAssignmentClick = useCallback((assignment: AssignmentWithRelations) => {
     setSelectedAssignment(assignment);
   }, []);
@@ -353,6 +358,7 @@ export default function Assignments() {
                     <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Category</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Due Date</th>
                     {isDirector && <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Assignee</th>}
+                    {!isDirector && <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Creator</th>}
                     <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
@@ -388,6 +394,11 @@ export default function Assignments() {
                           {assignment.assignee_id.slice(0, 8)}...
                         </td>
                       )}
+                      {!isDirector && (
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {assignment.creator_id.slice(0, 8)}...
+                        </td>
+                      )}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
                           <Button
@@ -402,7 +413,7 @@ export default function Assignments() {
                               <Archive className="h-4 w-4" />
                             )}
                           </Button>
-                          {isDirector && (
+                          {canDeleteAssignment(assignment) && (
                             <Button
                               variant="ghost"
                               size="icon"
