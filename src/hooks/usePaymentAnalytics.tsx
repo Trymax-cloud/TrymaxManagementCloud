@@ -50,7 +50,10 @@ export function usePaymentAnalytics() {
 
       const totalInvoiced = payments.reduce((sum, p) => sum + Number(p.invoice_amount), 0);
       const totalReceived = payments.reduce((sum, p) => sum + Number(p.amount_paid), 0);
-      const totalPending = totalInvoiced - totalReceived;
+      
+      // Calculate pending amounts correctly - only for unpaid and partially paid payments
+      const pendingPayments = payments.filter((p) => p.status === "pending" || p.status === "partially_paid");
+      const totalPending = pendingPayments.reduce((sum, p) => sum + (Number(p.invoice_amount) - Number(p.amount_paid)), 0);
 
       const overduePayments = payments.filter(
         (p) => new Date(p.due_date) < now && p.status !== "paid"
@@ -86,7 +89,7 @@ export function usePaymentAnalytics() {
         collectionRate: totalInvoiced > 0 ? Math.round((totalReceived / totalInvoiced) * 100) : 0,
         averagePaymentDelay: averageDelay,
         paymentsThisMonth,
-        pendingCount: payments.filter((p) => p.status === "pending").length,
+        pendingCount: payments.filter((p) => p.status === "pending" || p.status === "partially_paid").length,
         overdueCount: overduePayments.length,
         paidCount: paidPayments.length,
       };
@@ -162,6 +165,10 @@ export function useClientPaymentSummaries() {
           const totalInvoiced = clientPayments.reduce((sum, p) => sum + Number(p.invoice_amount), 0);
           const totalPaid = clientPayments.reduce((sum, p) => sum + Number(p.amount_paid), 0);
           
+          // Calculate pending amount correctly - only for unpaid and partially paid payments
+          const pendingPayments = clientPayments.filter((p) => p.status === "pending" || p.status === "partially_paid");
+          const pendingAmount = pendingPayments.reduce((sum, p) => sum + (Number(p.invoice_amount) - Number(p.amount_paid)), 0);
+          
           const overduePayments = clientPayments.filter(
             (p) => new Date(p.due_date) < now && p.status !== "paid"
           );
@@ -216,7 +223,7 @@ export function useUpcomingPaymentReminders(daysAhead: number = 7) {
       const { data, error } = await supabase
         .from("client_payments")
         .select("*")
-        .neq("status", "paid")
+        .in("status", ["pending", "partially_paid"])
         .gte("due_date", todayStr)
         .lte("due_date", futureDateStr)
         .order("due_date", { ascending: true });
