@@ -248,11 +248,13 @@ export function AssignmentDetailModal({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {TASK_CATEGORIES.map((cat) => (
-                      <SelectItem key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </SelectItem>
-                    ))}
+                    {TASK_CATEGORIES
+                      .filter((cat) => cat.value !== assignment.category)
+                      .map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
