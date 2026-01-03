@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,19 +11,11 @@ interface PaymentReminder {
   id: string;
   client_name: string;
   invoice_amount: number;
-  amount_paid: number;
   due_date: string;
   status: string;
   responsible_user_id: string;
   responsible_email?: string;
   responsible_name?: string;
-  last_72h_reminder_sent?: string;
-  last_24h_reminder_sent?: string;
-  last_overdue_reminder_sent?: string;
-}
-
-interface ReminderRequest {
-  payment_ids?: string[]; // Optional: specific payment IDs to process
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -33,56 +25,38 @@ serve(async (req: Request): Promise<Response> => {
   }
 
   try {
-    console.log("Starting payment reminder check...");
+    console.log("🚀 Starting payment reminder process...");
 
-    // Parse request body for optional payment IDs
-    let paymentIds: string[] = [];
-    if (req.method === "POST") {
-      const body: ReminderRequest = await req.json().catch(() => ({}));
-      paymentIds = body.payment_ids || [];
-      console.log(`Processing ${paymentIds.length} specific payment IDs`);
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || 
+                       Deno.env.get("SUPABASE_ANON_KEY")!;
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error("Missing Supabase configuration");
     }
 
-    // Get environment variables with explicit error checking
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Initialize Resend
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-
-    // Explicit guard to throw error if env vars are missing
-    if (!supabaseUrl) {
-      throw new Error("Missing SUPABASE_URL in Edge Function secrets");
-    }
-
-    if (!supabaseKey) {
-      throw new Error("Missing SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY in Edge Function secrets");
-    }
-
     if (!resendApiKey) {
       throw new Error("Missing RESEND_API_KEY in Edge Function secrets");
     }
 
-    console.log("Environment variables loaded successfully");
-
-    // Create Supabase client
-    const supabase = createClient(supabaseUrl, supabaseKey);
     const resend = new Resend(resendApiKey);
+    console.log("✅ Services initialized successfully");
 
-    // Get today's date
-    const today = new Date();
-    const todayStr = today.toISOString().split("T")[0];
+    // Parse request body
+    const body = await req.json().catch(() => ({}));
+    const paymentIds = body.payment_ids || [];
+    console.log(`📋 Processing ${paymentIds.length > 0 ? paymentIds.length + ' specific' : 'overdue'} payments`);
 
-    // Calculate time windows
-    const twentyFourHoursFromNow = new Date(today);
-    twentyFourHoursFromNow.setDate(twentyFourHoursFromNow.getDate() + 1);
-    const twentyFourStr = twentyFourHoursFromNow.toISOString().split("T")[0];
-
-    const seventyTwoHoursFromNow = new Date(today);
-    seventyTwoHoursFromNow.setDate(seventyTwoHoursFromNow.getDate() + 3);
-    const seventyTwoStr = seventyTwoHoursFromNow.toISOString().split("T")[0];
-
-    console.log(`Checking payments with due dates up to ${seventyTwoStr}`);
-
+    // Get payments to process
     let payments: PaymentReminder[] = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split('T')[0];
 
     if (paymentIds.length > 0) {
       // Process specific payment IDs
@@ -94,11 +68,9 @@ serve(async (req: Request): Promise<Response> => {
       if (specificError) {
         throw new Error(`Failed to fetch specific payments: ${specificError.message}`);
       }
-
       payments = specificPayments || [];
-      console.log(`Found ${payments.length} specific payments to process`);
     } else {
-      // Process only overdue payments when no specific IDs provided
+      // Process only overdue payments
       const { data: overduePayments, error: overdueError } = await supabase
         .from("client_payments")
         .select("*")
@@ -108,10 +80,10 @@ serve(async (req: Request): Promise<Response> => {
       if (overdueError) {
         throw new Error(`Failed to fetch overdue payments: ${overdueError.message}`);
       }
-
       payments = overduePayments || [];
-      console.log(`Found ${payments.length} overdue payments to process`);
     }
+
+    console.log(`📊 Found ${payments.length} payments to process`);
 
     if (!payments || payments.length === 0) {
       return new Response(
@@ -123,163 +95,116 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Get unique user IDs
+    // Get user profiles
     const userIds = [...new Set(payments.map((p) => p.responsible_user_id))];
-
-    // Fetch user profiles
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
       .select("id, email, name")
       .in("id", userIds);
 
     if (profilesError) {
-      console.error("Failed to fetch profiles:", profilesError);
+      throw new Error(`Failed to fetch user profiles: ${profilesError.message}`);
     }
 
-    // Create email lookup
-    const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
+    const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+    console.log(`👥 Found ${profiles?.length || 0} user profiles`);
 
-    // Categorize and filter payments based on reminder rules
-    const reminders: { payment: PaymentReminder; type: string; reason: string }[] = [];
-
-    for (const payment of payments) {
-      // Skip if already paid
-      if (payment.status === "paid") {
-        console.log(`Skipping payment ${payment.id} - already paid`);
-        continue;
-      }
-
-      const profile = profileMap.get(payment.responsible_user_id);
-      const paymentWithEmail: PaymentReminder = {
-        ...payment,
-        responsible_email: profile?.email,
-        responsible_name: profile?.name,
-      };
-
-      const dueDate = new Date(payment.due_date);
-      
-      // Check if reminder tracking columns exist, if not, treat as never sent
-      const last72hSent = payment.last_72h_reminder_sent ? new Date(payment.last_72h_reminder_sent) : null;
-      const last24hSent = payment.last_24h_reminder_sent ? new Date(payment.last_24h_reminder_sent) : null;
-      const lastOverdueSent = payment.last_overdue_reminder_sent ? new Date(payment.last_overdue_reminder_sent) : null;
-      
-      // Rule a: 72-hour reminder
-      if (dueDate <= seventyTwoHoursFromNow && dueDate >= today && !last72hSent) {
-        reminders.push({ 
-          payment: paymentWithEmail, 
-          type: "upcoming_72h", 
-          reason: "Payment due within 72 hours" 
-        });
-      }
-      // Rule b: 24-hour reminder
-      else if (dueDate <= twentyFourHoursFromNow && dueDate >= today && !last24hSent) {
-        reminders.push({ 
-          payment: paymentWithEmail, 
-          type: "upcoming_24h", 
-          reason: "Payment due within 24 hours" 
-        });
-      }
-      // Rule c: Overdue reminder
-      else if (dueDate < today && !lastOverdueSent) {
-        reminders.push({ 
-          payment: paymentWithEmail, 
-          type: "overdue", 
-          reason: "Payment is overdue" 
-        });
-      }
-      else {
-        console.log(`Skipping payment ${payment.id} - reminder already sent or not eligible`);
-        console.log(`  Due date: ${payment.due_date}, Today: ${todayStr}`);
-        console.log(`  Status: ${payment.status}`);
-        console.log(`  Last reminders: 72h=${!!last72hSent}, 24h=${!!last24hSent}, overdue=${!!lastOverdueSent}`);
-      }
-    }
-
-    console.log(`Sending ${reminders.length} reminder emails`);
-
-    // Send emails
+    // Process each payment
+    const results = [];
     let successCount = 0;
     let failCount = 0;
 
-    for (const { payment, type, reason } of reminders) {
-      if (!payment.responsible_email) {
-        console.log(`Skipping payment ${payment.id} - no email found for responsible user ${payment.responsible_user_id}`);
-        continue;
-      }
-
-      console.log(`Sending ${type} reminder to responsible person: ${payment.responsible_email} for payment ${payment.id}`);
-
-      const subject = type === "overdue"
-        ? `⚠️ OVERDUE: Payment from ${payment.client_name}`
-        : type === "upcoming_24h"
-        ? `📅 DUE SOON: Payment from ${payment.client_name} (within 24h)`
-        : `🔔 UPCOMING: Payment from ${payment.client_name} (within 72h)`;
-
-      const html = `
-        <h2>Payment Reminder</h2>
-        <p>Hello ${payment.responsible_name || "Team"},</p>
-        <p>You are responsible for the following payment:</p>
-        <p><strong>Client:</strong> ${payment.client_name}</p>
-        <p><strong>Amount:</strong> $${payment.invoice_amount.toLocaleString()}</p>
-        <p><strong>Due Date:</strong> ${payment.due_date}</p>
-        <p><strong>Status:</strong> ${payment.status}</p>
-        <p><strong>Reason:</strong> ${reason}</p>
-        <p>Please take appropriate action to collect this payment.</p>
-        <hr>
-        <p><small>This is an automated reminder from the EWPM System.</small></p>
-      `;
-
+    for (const payment of payments) {
       try {
-        const emailResult = await resend.emails.send({
-          from: "EWPM System <noreply@trymaxmanagement.com>",
-          to: [payment.responsible_email],
-          subject,
-          html,
-        });
-        
-        console.log(`Email sent successfully to ${payment.responsible_email}. Email ID: ${emailResult.data?.id}`);
-        successCount++;
-        console.log(`Sent ${type} reminder for payment ${payment.id}`);
-
-        // Update the corresponding reminder timestamp
-        const updateField = type === "overdue" 
-          ? "last_overdue_reminder_sent" 
-          : type === "upcoming_24h" 
-          ? "last_24h_reminder_sent" 
-          : "last_72h_reminder_sent";
-
-        // Try to update the reminder timestamp, but don't fail if columns don't exist yet
-        try {
-          await supabase
-            .from("client_payments")
-            .update({ [updateField]: new Date().toISOString() })
-            .eq("id", payment.id);
-          console.log(`Updated ${updateField} for payment ${payment.id}`);
-        } catch (updateError) {
-          console.warn(`Failed to update reminder timestamp for payment ${payment.id}:`, updateError);
-          // Don't fail the whole operation if timestamp update fails
-          // This can happen if the migration hasn't been applied yet
+        // Skip if already paid
+        if (payment.status === "paid") {
+          console.log(`⏭️  Skipping payment ${payment.id} - already paid`);
+          continue;
         }
 
-      } catch (emailError) {
+        const profile = profileMap.get(payment.responsible_user_id);
+        if (!profile?.email) {
+          console.log(`⚠️  Skipping payment ${payment.id} - no email found for user ${payment.responsible_user_id}`);
+          continue;
+        }
+
+        // Determine reminder type
+        const dueDate = new Date(payment.due_date);
+        const daysDiff = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        
+        let reminderType = "overdue";
+        let urgency = "High";
+        let subject = "⚠️ OVERDUE PAYMENT REMINDER";
+        
+        if (daysDiff >= 0) {
+          if (daysDiff <= 1) {
+            reminderType = "due_soon";
+            urgency = "Critical";
+            subject = "🔴 PAYMENT DUE WITHIN 24 HOURS";
+          } else if (daysDiff <= 3) {
+            reminderType = "upcoming";
+            urgency = "Medium";
+            subject = "🟡 PAYMENT DUE WITHIN 72 HOURS";
+          }
+        }
+
+        // Create professional email content
+        const emailHtml = createProfessionalEmail(payment, profile, reminderType, daysDiff);
+        
+        console.log(`📧 Sending ${reminderType} reminder to ${profile.email} for payment ${payment.id}`);
+
+        // Send email
+        const emailResult = await resend.emails.send({
+          from: "EWPM System <payments@trymaxmanagement.com>",
+          to: [profile.email],
+          subject,
+          html: emailHtml,
+        });
+
+        if (emailResult.error) {
+          throw new Error(emailResult.error.message);
+        }
+
+        console.log(`✅ Email sent successfully to ${profile.email}. ID: ${emailResult.data?.id}`);
+        successCount++;
+
+        results.push({
+          payment_id: payment.id,
+          client_name: payment.client_name,
+          recipient: profile.email,
+          reminder_type: reminderType,
+          email_id: emailResult.data?.id,
+          status: "sent"
+        });
+
+      } catch (error) {
+        console.error(`❌ Failed to process payment ${payment.id}:`, error);
         failCount++;
-        console.error(`Failed to send email for payment ${payment.id}:`, emailError);
+        results.push({
+          payment_id: payment.id,
+          client_name: payment.client_name,
+          status: "failed",
+          error: error instanceof Error ? error.message : String(error)
+        });
       }
     }
 
+    console.log(`🎯 Process complete: ${successCount} sent, ${failCount} failed`);
+
     return new Response(
       JSON.stringify({
-        message: "Payment reminders processed",
+        message: "Payment reminders processed successfully",
         sent: successCount,
         failed: failCount,
-        total: reminders.length,
-        processed_ids: reminders.map(r => r.payment.id),
+        total: payments.length,
+        results,
+        timestamp: new Date().toISOString()
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (error) {
-    console.error("Error in send-payment-reminders:", error);
+    console.error("💥 Error in payment reminders:", error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     
     return new Response(
@@ -291,3 +216,95 @@ serve(async (req: Request): Promise<Response> => {
     );
   }
 });
+
+function createProfessionalEmail(payment: PaymentReminder, profile: any, reminderType: string, daysDiff: number): string {
+  const isOverdue = daysDiff < 0;
+  const urgencyColor = isOverdue ? "#dc2626" : daysDiff <= 1 ? "#f59e0b" : "#3b82f6";
+  const urgencyBg = isOverdue ? "#fef2f2" : daysDiff <= 1 ? "#fffbeb" : "#eff6ff";
+  
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Reminder - EWPM System</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f8fafc; }
+        .container { max-width: 600px; margin: 0 auto; background-color: white; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+        .content { padding: 30px; }
+        .payment-details { background-color: ${urgencyBg}; border-left: 4px solid ${urgencyColor}; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .detail-row { display: flex; justify-content: space-between; margin: 10px 0; padding: 5px 0; border-bottom: 1px solid #e5e7eb; }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { font-weight: 600; color: #374151; }
+        .detail-value { color: #6b7280; }
+        .amount { font-size: 24px; font-weight: bold; color: #111827; }
+        .urgent { color: ${urgencyColor}; font-weight: bold; }
+        .footer { background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb; }
+        .action-button { display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: 600; }
+        .action-button:hover { background-color: #2563eb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Payment Collection Reminder</h1>
+            <p>Employee Work & Project Management System</p>
+        </div>
+        
+        <div class="content">
+            <p>Dear <strong>${profile.name || "Team Member"}</strong>,</p>
+            
+            <p>This is an automated reminder that you are responsible for collecting the following payment:</p>
+            
+            <div class="payment-details">
+                <div class="detail-row">
+                    <span class="detail-label">Client Name:</span>
+                    <span class="detail-value">${payment.client_name}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Amount Due:</span>
+                    <span class="detail-value amount">$${payment.invoice_amount.toLocaleString()}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Due Date:</span>
+                    <span class="detail-value urgent">${new Date(payment.due_date).toLocaleDateString()}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Status:</span>
+                    <span class="detail-value">${payment.status.replace('_', ' ').toUpperCase()}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Days ${isOverdue ? 'Overdue' : 'Remaining'}:</span>
+                    <span class="detail-value urgent">${Math.abs(daysDiff)} day${Math.abs(daysDiff) !== 1 ? 's' : ''} ${isOverdue ? 'overdue' : 'remaining'}</span>
+                </div>
+            </div>
+            
+            <p><strong>Urgency Level:</strong> <span class="urgent">${isOverdue ? 'HIGH - PAYMENT OVERDUE' : daysDiff <= 1 ? 'CRITICAL - DUE WITHIN 24H' : 'MEDIUM - FOLLOW UP REQUIRED'}</span></p>
+            
+            <p>Please take immediate action to collect this payment. If you have already collected it, please update the payment status in the system.</p>
+            
+            <a href="https://trymaxmanagement.com/payments" class="action-button">
+                View Payment Details →
+            </a>
+            
+            <p><strong>Next Steps:</strong></p>
+            <ol>
+                <li>Contact the client regarding the payment</li>
+                <li>Follow up on any pending invoices</li>
+                <li>Update the payment status once collected</li>
+                <li>Document any payment arrangements made</li>
+            </ol>
+        </div>
+        
+        <div class="footer">
+            <p><small>This is an automated reminder from the EWPM System.</small></p>
+            <p><small>If you believe this is an error, please contact your administrator.</small></p>
+            <p><small>Generated on: ${new Date().toLocaleString()}</small></p>
+        </div>
+    </div>
+</body>
+</html>
+  `;
+}

@@ -14,14 +14,12 @@ import { useProfiles } from "@/hooks/useProfiles";
 import { useProjects } from "@/hooks/useProjects";
 import { useUserRole } from "@/hooks/useUserRole";
 import { usePaymentReminders, useDeletePayment } from "@/hooks/usePaymentReminders";
-import { CreatePaymentModal } from "@/components/payments/CreatePaymentModal";
 import { PaymentCard } from "@/components/payments/PaymentCard";
-import { DeletePaymentDialog } from "@/components/payments/DeletePaymentDialog";
+import { CreatePaymentModal } from "@/components/payments/CreatePaymentModal";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { 
-  CreditCard, Plus, AlertCircle, IndianRupee, Clock, 
-  CheckCircle2, Search, Filter, Mail, Loader2, Trash2
+  CalendarDays, Mail, Loader2, Plus, Search, IndianRupee, AlertTriangle, CheckCircle
 } from "lucide-react";
 
 export default function Payments() {
@@ -38,12 +36,6 @@ export default function Payments() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [paymentToDelete, setPaymentToDelete] = useState<{
-    id: string;
-    clientName: string;
-    amount: number;
-  } | null>(null);
 
   const payments = isDirector ? allPayments : myPayments;
   const isLoading = isDirector ? allLoading : myLoading;
@@ -104,20 +96,18 @@ export default function Payments() {
     }
   };
 
-  const handleDeletePayment = (payment: { id: string; client_name: string; invoice_amount: number }) => {
-    setPaymentToDelete({
-      id: payment.id,
-      clientName: payment.client_name,
-      amount: payment.invoice_amount,
-    });
-    setDeleteDialogOpen(true);
-  };
-
-  const confirmDeletePayment = () => {
-    if (paymentToDelete) {
-      deletePayment(paymentToDelete.id);
-      setDeleteDialogOpen(false);
-      setPaymentToDelete(null);
+  const handleDeletePayment = async (payment: { id: string; client_name: string; invoice_amount: number }) => {
+    // Simple delete without confirmation modal
+    if (!confirm(`Are you sure you want to delete payment from ${payment.client_name} for $${payment.invoice_amount}?`)) {
+      return;
+    }
+    
+    try {
+      await deletePayment(payment.id);
+      // Clear selection if deleted payment was selected
+      setSelectedPayments(prev => prev.filter(id => id !== payment.id));
+    } catch (error) {
+      console.error("Delete failed:", error);
     }
   };
   return (
@@ -323,17 +313,6 @@ export default function Payments() {
       {isDirector && (
         <CreatePaymentModal open={createModalOpen} onOpenChange={setCreateModalOpen} />
       )}
-      
-      <DeletePaymentDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onConfirm={confirmDeletePayment}
-        paymentInfo={paymentToDelete ? {
-          clientName: paymentToDelete.clientName,
-          amount: paymentToDelete.amount,
-        } : null}
-        isLoading={deletingPayment}
-      />
     </AppLayout>
   );
 }
