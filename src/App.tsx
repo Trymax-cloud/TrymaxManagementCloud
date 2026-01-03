@@ -53,16 +53,16 @@ const App = () => {
   // useElectronValidation();
 
   return (
-    <SettingsProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <OfflineIndicator />
-        <InstallPrompt />
-        <BrowserRouter>
-          <AuthProvider>
-            <RealtimeProvider>
-              <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <SettingsProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <OfflineIndicator />
+          <InstallPrompt />
+          <BrowserRouter>
+            <AuthProvider>
+              <RealtimeProvider>
                 <Suspense fallback={<PageLoader />}>
                   <Routes>
                     <Route path="/" element={<Auth />} />
@@ -86,12 +86,12 @@ const App = () => {
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
-              </QueryClientProvider>
-            </RealtimeProvider>
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </SettingsProvider>
+              </RealtimeProvider>
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </SettingsProvider>
+    </QueryClientProvider>
   );
 };
 
