@@ -105,7 +105,7 @@ export function AssignmentDetailModal({
   return (
     <>
       <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) setNewRemark(""); onOpenChange(isOpen); }}>
-        <DialogContent className="relative max-w-2xl max-h-[90vh] overflow-y-auto transition-all duration-200">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto transition-all duration-200">
           <DialogHeader>
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1 flex-1">
@@ -290,9 +290,9 @@ export function AssignmentDetailModal({
             <Separator />
           </div>
           
-          {/* Delete button in bottom right */}
+          {/* Delete button in modal footer */}
           {canDelete && (
-            <div className="absolute bottom-4 right-4">
+            <div className="flex justify-end pt-4 border-t mt-4">
               <Button
                 variant="destructive"
                 size="sm"
