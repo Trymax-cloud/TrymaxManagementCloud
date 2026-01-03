@@ -29,11 +29,17 @@ export function useRealtimeAssignments() {
         (payload) => {
           console.log("Assignment change:", payload);
           
-          // Invalidate all assignment queries
+          // Invalidate all assignment-related queries for comprehensive refresh
           queryClient.invalidateQueries({ queryKey: ["assignments"] });
           queryClient.invalidateQueries({ queryKey: ["my-assignments"] });
+          queryClient.invalidateQueries({ queryKey: ["assignments-with-profiles"] });
+          queryClient.invalidateQueries({ queryKey: ["my-assignments-with-profiles"] });
           queryClient.invalidateQueries({ queryKey: ["assignment-stats"] });
           queryClient.invalidateQueries({ queryKey: ["overdue-assignments"] });
+          queryClient.invalidateQueries({ queryKey: ["overdue-assignments-with-profiles"] });
+          queryClient.invalidateQueries({ queryKey: ["daily-summary"] });
+          queryClient.invalidateQueries({ queryKey: ["analytics"] });
+          queryClient.invalidateQueries({ queryKey: ["payment-analytics"] });
 
           // Show toast for relevant updates
           if (payload.eventType === "INSERT") {
@@ -85,9 +91,13 @@ export function useRealtimeProjects() {
         (payload) => {
           console.log("Project change:", payload);
           
+          // Invalidate all project-related queries for comprehensive refresh
           queryClient.invalidateQueries({ queryKey: ["projects"] });
           queryClient.invalidateQueries({ queryKey: ["active-projects"] });
           queryClient.invalidateQueries({ queryKey: ["project-analytics"] });
+          queryClient.invalidateQueries({ queryKey: ["project-with-profiles"] });
+          queryClient.invalidateQueries({ queryKey: ["daily-summary"] });
+          queryClient.invalidateQueries({ queryKey: ["analytics"] });
 
           if (payload.eventType === "INSERT") {
             const project = payload.new as { name: string };
@@ -125,10 +135,16 @@ export function useRealtimePayments() {
         (payload) => {
           console.log("Payment change:", payload);
           
+          // Invalidate all payment-related queries for comprehensive refresh
           queryClient.invalidateQueries({ queryKey: ["payments"] });
           queryClient.invalidateQueries({ queryKey: ["my-payments"] });
           queryClient.invalidateQueries({ queryKey: ["overdue-payments"] });
           queryClient.invalidateQueries({ queryKey: ["payment-analytics"] });
+          queryClient.invalidateQueries({ queryKey: ["payment-trends"] });
+          queryClient.invalidateQueries({ queryKey: ["client-payment-summaries"] });
+          queryClient.invalidateQueries({ queryKey: ["upcoming-payment-reminders"] });
+          queryClient.invalidateQueries({ queryKey: ["daily-summary"] });
+          queryClient.invalidateQueries({ queryKey: ["analytics"] });
 
           if (payload.eventType === "UPDATE") {
             const payment = payload.new as { 
@@ -172,9 +188,13 @@ export function useRealtimeRatings() {
         (payload) => {
           console.log("Rating change:", payload);
           
+          // Invalidate all rating-related queries for comprehensive refresh
           queryClient.invalidateQueries({ queryKey: ["ratings"] });
           queryClient.invalidateQueries({ queryKey: ["my-ratings"] });
           queryClient.invalidateQueries({ queryKey: ["rating-analytics"] });
+          queryClient.invalidateQueries({ queryKey: ["employee-ratings"] });
+          queryClient.invalidateQueries({ queryKey: ["daily-summary"] });
+          queryClient.invalidateQueries({ queryKey: ["analytics"] });
 
           if (payload.eventType === "INSERT") {
             const rating = payload.new as { user_id: string };
