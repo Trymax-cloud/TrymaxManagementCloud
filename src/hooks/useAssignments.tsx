@@ -212,14 +212,20 @@ export function useUpdateAssignment() {
   return useMutation({
     mutationFn: async (input: {
       id: string;
+      title?: string;
+      description?: string;
+      due_date?: string;
       status?: string;
       remark?: string;
       category?: TaskCategory;
     }) => {
       const updateData: Record<string, unknown> = {};
 
+      if (input.title !== undefined) updateData.title = input.title;
+      if (input.description !== undefined) updateData.description = input.description;
+      if (input.due_date !== undefined) updateData.due_date = input.due_date;
       if (input.status) updateData.status = input.status;
-      if (input.remark) updateData.remark = input.remark;
+      if (input.remark !== undefined) updateData.remark = input.remark;
       if (input.category) updateData.category = input.category;
       if (input.status === "completed") {
         updateData.completion_date = new Date().toISOString();
