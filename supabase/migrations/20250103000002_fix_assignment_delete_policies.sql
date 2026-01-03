@@ -27,8 +27,6 @@ SELECT
   permissive,
   roles,
   cmd,
-  qual,
-  with_check,
-  check_option
+  qual
 FROM pg_policies 
 WHERE tablename = 'assignments' AND cmd = 'DELETE';
