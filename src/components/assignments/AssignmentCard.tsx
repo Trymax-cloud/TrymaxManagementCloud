@@ -1,12 +1,15 @@
 import { memo, useMemo } from "react";
 import { format, isPast, isToday, isTomorrow } from "date-fns";
-import { Calendar, FolderKanban } from "lucide-react";
+import { Calendar, FolderKanban, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { StatusBadge, PriorityBadge } from "@/components/ui/status-badge";
 import { CategoryBadge } from "@/components/ui/category-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { type AssignmentWithRelations } from "@/types/assignment-relations";
+import { useDirectDeleteAssignment } from "@/hooks/useDirectDeleteAssignment";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface AssignmentCardProps {
   assignment: AssignmentWithRelations;
@@ -19,6 +22,9 @@ export const AssignmentCard = memo(function AssignmentCard({
   onClick, 
   showAssignee = false 
 }: AssignmentCardProps) {
+  const { isDirector } = useUserRole();
+  const deleteAssignment = useDirectDeleteAssignment();
+  
   const dueDate = assignment.due_date ? new Date(assignment.due_date) : null;
   const isOverdue = dueDate && isPast(dueDate) && assignment.status !== "completed";
   const isDueToday = dueDate && isToday(dueDate);
@@ -39,6 +45,11 @@ export const AssignmentCard = memo(function AssignmentCard({
 
   const assigneeName = assignment.assignee?.name || "Loading...";
 
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click (modal opening)
+    deleteAssignment.mutate(assignment.id);
+  };
+
   return (
     <Card
       className={cn(
@@ -56,7 +67,18 @@ export const AssignmentCard = memo(function AssignmentCard({
           <h3 className="font-medium text-foreground line-clamp-2">{assignment.title}</h3>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <CategoryBadge category={assignment.category} />
-            <PriorityBadge priority={assignment.priority} />
+            <PriorityBadge priority={assignment.priority as any} />
+            {isDirector && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                onClick={handleDelete}
+                disabled={deleteAssignment.isPending}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -80,7 +102,7 @@ export const AssignmentCard = memo(function AssignmentCard({
         </div>
 
         <div className="flex items-center justify-between pt-2 border-t">
-          <StatusBadge status={assignment.status} />
+          <StatusBadge status={assignment.status as any} />
           
           {showAssignee && (
             <div className="flex items-center gap-2">
