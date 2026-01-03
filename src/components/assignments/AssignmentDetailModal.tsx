@@ -68,7 +68,10 @@ export function AssignmentDetailModal({
   const [newRemark, setNewRemark] = useState(assignment?.remark || "");
 
   // Check if user can delete this assignment
-  const canDelete = isDirector || (user && assignment?.assignee_id === user.id);
+  // Directors can delete any assignment
+  // Regular users can delete assignments they created OR assignments assigned to them
+  const canDelete = isDirector || 
+    (user && (assignment?.creator_id === user.id || assignment?.assignee_id === user.id));
 
   if (!assignment) return null;
 
