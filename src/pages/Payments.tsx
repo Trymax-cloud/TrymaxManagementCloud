@@ -107,18 +107,8 @@ export default function Payments() {
       await deletePayment(payment.id);
       // Clear selection if deleted payment was selected
       setSelectedPayments(prev => prev.filter(id => id !== payment.id));
-      // Show success toast instead of alert
-      toast({
-        title: "Payment Deleted",
-        description: `Payment from ${payment.client_name} for ₹${payment.invoice_amount.toLocaleString('en-IN')} has been removed successfully`,
-      });
     } catch (error) {
       console.error("Delete failed:", error);
-      toast({
-        title: "Failed to Delete Payment",
-        description: error instanceof Error ? error.message : "An error occurred while deleting the payment",
-        variant: "destructive",
-      });
     }
   };
 
