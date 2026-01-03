@@ -6,8 +6,6 @@ import {
   User,
   FolderKanban,
   MessageSquare,
-  History,
-  Paperclip,
   Tag,
 } from "lucide-react";
 import {
@@ -274,24 +272,6 @@ export function AssignmentDetailModal({
             </div>
 
             <Separator />
-
-            {/* Placeholder sections */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <History className="h-4 w-4" />
-                <span className="text-sm">Status History</span>
-                <Badge variant="secondary" className="ml-auto">
-                  Coming Soon
-                </Badge>
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Paperclip className="h-4 w-4" />
-                <span className="text-sm">Attachments</span>
-                <Badge variant="secondary" className="ml-auto">
-                  Coming Soon
-                </Badge>
-              </div>
-            </div>
           </div>
         </DialogContent>
       </Dialog>
