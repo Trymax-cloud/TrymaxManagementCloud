@@ -149,7 +149,7 @@ export default function Payments() {
 
   const handleDeletePayment = async (payment: { id: string; client_name: string; invoice_amount: number }) => {
     // Simple delete without confirmation modal
-    if (!confirm(`Are you sure you want to delete payment from ${payment.client_name} for $${payment.invoice_amount}?`)) {
+    if (!confirm(`Are you sure you want to delete payment from ${payment.client_name} for ₹${payment.invoice_amount.toLocaleString('en-IN')}?`)) {
       return;
     }
     

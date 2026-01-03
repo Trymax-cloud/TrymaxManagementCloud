@@ -265,7 +265,7 @@ function createProfessionalEmail(payment: PaymentReminder, profile: any, reminde
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Amount Due:</span>
-                    <span class="detail-value amount">$${payment.invoice_amount.toLocaleString()}</span>
+                    <span class="detail-value amount">₹${payment.invoice_amount.toLocaleString('en-IN')}</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Due Date:</span>
@@ -285,7 +285,7 @@ function createProfessionalEmail(payment: PaymentReminder, profile: any, reminde
             
             <p>Please take immediate action to collect this payment. If you have already collected it, please update the payment status in the system.</p>
             
-            <a href="https://trymaxmanagement.com/payments" class="action-button">
+            <a href="https://trymaxmanagement.in/payments" class="action-button">
                 View Payment Details →
             </a>
             
