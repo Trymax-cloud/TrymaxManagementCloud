@@ -83,6 +83,22 @@ export default function Payments() {
     }
   };
 
+  const handleDebugEmails = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("debug-emails");
+      if (error) {
+        console.error("Debug error:", error);
+        alert(`Debug error: ${error.message}`);
+      } else {
+        console.log("Debug info:", data);
+        alert(`Debug info: ${JSON.stringify(data, null, 2)}`);
+      }
+    } catch (error) {
+      console.error("Debug failed:", error);
+      alert(`Debug failed: ${error}`);
+    }
+  };
+
   const handleSelectPayment = (paymentId: string, checked: boolean) => {
     if (checked) {
       setSelectedPayments(prev => [...prev, paymentId]);
@@ -109,6 +125,8 @@ export default function Payments() {
       await deletePayment(payment.id);
       // Clear selection if deleted payment was selected
       setSelectedPayments(prev => prev.filter(id => id !== payment.id));
+      // Show success message
+      console.log("Payment deleted successfully");
     } catch (error) {
       console.error("Delete failed:", error);
     }
@@ -124,6 +142,14 @@ export default function Payments() {
           </p>
           {isDirector && (
             <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="gap-2" 
+                onClick={handleDebugEmails}
+              >
+                🔍 Debug Emails
+              </Button>
               <Button 
                 variant="outline" 
                 className="gap-2" 
