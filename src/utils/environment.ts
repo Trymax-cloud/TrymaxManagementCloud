@@ -36,8 +36,7 @@ function getUserAgentVersion(userAgent: string): string {
  * Checks if we're in a development environment
  */
 export function isDevelopment(): boolean {
-  return process?.env?.NODE_ENV === 'development' || 
-         import.meta.env?.MODE === 'development';
+  return import.meta.env?.MODE === 'development';
 }
 
 /**
@@ -46,8 +45,7 @@ export function isDevelopment(): boolean {
  */
 export function getEnvVar(key: string): string | undefined {
   // Try different ways to access environment variables
-  return process?.env?.[key] || 
-         import.meta.env?.[key] || 
+  return import.meta.env?.[key] || 
          (typeof window !== 'undefined' && (window as any).__ENV?.[key]);
 }
 
@@ -83,11 +81,6 @@ export const platformFeatures = {
  */
 export function validateElectronSafety(): string[] {
   const violations: string[] = [];
-  
-  // Check for direct process access
-  if (typeof process !== 'undefined' && !getEnvironment().isElectron) {
-    violations.push('Direct process access detected in browser environment');
-  }
   
   // Check for common Electron-specific globals
   const forbiddenGlobals = ['require', 'Buffer', 'global', '__dirname', '__filename'];

@@ -9,7 +9,8 @@ import { validateElectronSafety } from "@/utils/environment";
  */
 export function validateElectronCompatibility(): void {
   // Only run in development
-  if (process?.env?.NODE_ENV !== 'development' && import.meta.env?.MODE !== 'development') {
+  const isDevelopment = import.meta.env?.MODE === 'development';
+  if (!isDevelopment) {
     return;
   }
 
@@ -82,8 +83,7 @@ export const electronChecks = {
  */
 export function useElectronValidation() {
   // Only run in development
-  const isDevelopment = process?.env?.NODE_ENV === 'development' || 
-                       import.meta.env?.MODE === 'development';
+  const isDevelopment = import.meta.env?.MODE === 'development';
 
   if (isDevelopment) {
     // Validate on mount
@@ -106,8 +106,7 @@ export function useElectronValidation() {
 export function safeGetEnv(key: string): string | undefined {
   // Try different ways to access environment variables safely
   try {
-    return process?.env?.[key] || 
-           import.meta.env?.[key] || 
+    return import.meta.env?.[key] || 
            (typeof window !== 'undefined' && (window as any).__ENV?.[key]);
   } catch {
     return undefined;

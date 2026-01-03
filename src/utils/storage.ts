@@ -26,39 +26,33 @@ export class SafeStorage {
   /**
    * Set an item in storage
    */
-  static setItem(key: string, value: string): boolean {
+  static setItem(key: string, value: string): void {
     try {
       localStorage.setItem(key, value);
-      return true;
     } catch (error) {
       console.warn('Failed to set item in storage:', error);
-      return false;
     }
   }
 
   /**
    * Remove an item from storage
    */
-  static removeItem(key: string): boolean {
+  static removeItem(key: string): void {
     try {
       localStorage.removeItem(key);
-      return true;
     } catch (error) {
       console.warn('Failed to remove item from storage:', error);
-      return false;
     }
   }
 
   /**
    * Clear all storage
    */
-  static clear(): boolean {
+  static clear(): void {
     try {
       localStorage.clear();
-      return true;
     } catch (error) {
       console.warn('Failed to clear storage:', error);
-      return false;
     }
   }
 
@@ -117,7 +111,8 @@ export class JSONStorage {
    */
   static setItem<T>(key: string, value: T): boolean {
     try {
-      return SafeStorage.setItem(key, JSON.stringify(value));
+      SafeStorage.setItem(key, JSON.stringify(value));
+      return true;
     } catch (error) {
       console.warn(`Failed to stringify JSON for key "${key}":`, error);
       return false;
@@ -128,7 +123,13 @@ export class JSONStorage {
    * Remove a JSON object from storage
    */
   static removeItem(key: string): boolean {
-    return SafeStorage.removeItem(key);
+    try {
+      SafeStorage.removeItem(key);
+      return true;
+    } catch (error) {
+      console.warn(`Failed to remove JSON for key "${key}":`, error);
+      return false;
+    }
   }
 }
 
@@ -188,3 +189,13 @@ export class SafeSessionStorage {
     }
   }
 }
+
+/**
+ * Storage adapter for Supabase auth
+ * Implements the interface expected by Supabase client
+ */
+export const SupabaseStorageAdapter = {
+  getItem: (key: string) => Promise.resolve(SafeStorage.getItem(key)),
+  setItem: (key: string, value: string) => Promise.resolve(SafeStorage.setItem(key, value)),
+  removeItem: (key: string) => Promise.resolve(SafeStorage.removeItem(key)),
+};
