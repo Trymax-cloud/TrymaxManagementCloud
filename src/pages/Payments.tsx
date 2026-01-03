@@ -85,13 +85,23 @@ export default function Payments() {
 
   const handleDebugEmails = async () => {
     try {
+      // Test simple function first
+      const { data: simpleData, error: simpleError } = await supabase.functions.invoke("simple-test");
+      if (simpleError) {
+        console.error("Simple test error:", simpleError);
+        alert(`Simple test failed: ${simpleError.message}`);
+        return;
+      }
+      console.log("Simple test success:", simpleData);
+
+      // Then test debug function
       const { data, error } = await supabase.functions.invoke("debug-emails");
       if (error) {
         console.error("Debug error:", error);
-        alert(`Debug error: ${error.message}`);
+        alert(`Debug error: ${error.message}\n\nSimple test worked: ${JSON.stringify(simpleData, null, 2)}`);
       } else {
         console.log("Debug info:", data);
-        alert(`Debug info: ${JSON.stringify(data, null, 2)}`);
+        alert(`Simple test: ${JSON.stringify(simpleData, null, 2)}\n\nDebug info: ${JSON.stringify(data, null, 2)}`);
       }
     } catch (error) {
       console.error("Debug failed:", error);
