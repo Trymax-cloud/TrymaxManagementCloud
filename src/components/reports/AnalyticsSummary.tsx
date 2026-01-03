@@ -29,13 +29,6 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
-const formatDuration = (minutes: number) => {
-  if (minutes === 0) return '-';
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-};
-
 function TrendBadge({ 
   direction, 
   percentage, 
@@ -208,8 +201,6 @@ export function AnalyticsSummary({ dateRange }: AnalyticsSummaryProps) {
                   </div>
                   <div className="flex gap-4 mt-1 text-sm text-muted-foreground">
                     <span>{data.top_performer.tasks_completed} tasks completed</span>
-                    <span>•</span>
-                    <span>Avg time: {formatDuration(data.top_performer.avg_completion_time_minutes)}</span>
                     <span>•</span>
                     <span>Score: {data.top_performer.productivity_score}</span>
                   </div>

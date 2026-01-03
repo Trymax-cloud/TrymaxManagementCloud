@@ -356,8 +356,6 @@ export default function Reports() {
                         <TableHead className="text-right">Assigned</TableHead>
                         <TableHead className="text-right">Completed</TableHead>
                         <TableHead className="text-right">In Progress</TableHead>
-                        <TableHead className="text-right">Present</TableHead>
-                        <TableHead className="text-right">Absent</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -367,13 +365,11 @@ export default function Reports() {
                           <TableCell className="text-right">{emp.tasks_assigned}</TableCell>
                           <TableCell className="text-right text-green-600">{emp.tasks_completed}</TableCell>
                           <TableCell className="text-right text-blue-600">{emp.tasks_in_progress}</TableCell>
-                          <TableCell className="text-right text-green-600">{emp.attendance_present}</TableCell>
-                          <TableCell className="text-right text-red-600">{emp.attendance_absent}</TableCell>
                         </TableRow>
                       ))}
                       {(!employeeData || employeeData.length === 0) && (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center text-muted-foreground">
+                          <TableCell colSpan={4} className="text-center text-muted-foreground">
                             No employees found
                           </TableCell>
                         </TableRow>
