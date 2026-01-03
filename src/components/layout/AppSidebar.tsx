@@ -9,7 +9,6 @@ import {
   Users,
   FileText,
   LogOut,
-  CalendarClock,
   MessageSquare,
   CalendarDays,
   BarChart3
@@ -36,7 +35,6 @@ import { Separator } from "@/components/ui/separator";
 const employeeMenuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "My Assignments", url: "/assignments", icon: ClipboardList },
-  { title: "Attendance", url: "/attendance", icon: CalendarClock },
   { title: "Projects", url: "/projects", icon: FolderKanban },
   { title: "My Ratings", url: "/ratings", icon: Star },
   { title: "Daily Summary", url: "/daily-summary", icon: FileText },
@@ -48,7 +46,6 @@ const employeeMenuItems = [
 const directorMenuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "All Assignments", url: "/assignments", icon: ClipboardList },
-  { title: "Attendance", url: "/attendance", icon: CalendarClock },
   { title: "Projects", url: "/projects", icon: FolderKanban },
   { title: "Employees", url: "/employees", icon: Users },
   { title: "Employee Ratings", url: "/ratings", icon: Star },

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { format, addDays, subDays, startOfDay, endOfDay, isToday } from "date-fns";
-import { CalendarIcon, ChevronLeft, ChevronRight, Download, Printer, CheckCircle2, Clock, AlertTriangle, FileText, Save, Timer, Users, ChevronDown, ChevronUp, StickyNote } from "lucide-react";
+import { CalendarIcon, ChevronLeft, ChevronRight, Download, Printer, CheckCircle2, Clock, AlertTriangle, FileText, Save, Users, ChevronDown, ChevronUp, StickyNote, TrendingUp, Target, Activity } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge, PriorityBadge } from "@/components/ui/status-badge";
+import { CategoryBadge } from "@/components/ui/category-badge";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useMyAssignmentsWithProfiles, useAssignmentsWithProfiles } from "@/hooks/useAssignmentsWithProfiles";
@@ -18,7 +19,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useProfiles } from "@/hooks/useProfiles";
 import { cn } from "@/lib/utils";
-import { formatDuration } from "@/hooks/useAssignmentTimeTracking";
 import type { AssignmentPriority, AssignmentStatus } from "@/types";
 
 export default function DailySummary() {
@@ -351,6 +351,57 @@ export default function DailySummary() {
           </CardContent>
         </Card>
 
+        {/* Productivity Metrics */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="border-0 shadow-soft">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{stats.completed}</p>
+                <p className="text-xs text-muted-foreground">Completed</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-soft">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <Activity className="h-5 w-5 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{stats.inProgress}</p>
+                <p className="text-xs text-muted-foreground">In Progress</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-soft">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <Clock className="h-5 w-5 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{stats.pending}</p>
+                <p className="text-xs text-muted-foreground">Pending</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-soft">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                <Target className="h-5 w-5 text-purple-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{(stats.completed + stats.inProgress + stats.pending) > 0 ? Math.round((stats.completed / (stats.completed + stats.inProgress + stats.pending)) * 100) : 0}%</p>
+                <p className="text-xs text-muted-foreground">Completion Rate</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Stats Overview */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
           <Card className="border-0 shadow-soft">
@@ -410,12 +461,12 @@ export default function DailySummary() {
           </Card>
           <Card className="border-0 shadow-soft">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Timer className="h-5 w-5 text-primary" />
+              <div className="h-10 w-10 rounded-lg bg-red-500/10 flex items-center justify-center">
+                <AlertTriangle className="h-5 w-5 text-red-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{formatDuration(stats.totalTimeMinutes)}</p>
-                <p className="text-xs text-muted-foreground">Time Tracked</p>
+                <p className="text-2xl font-bold">{stats.emergency}</p>
+                <p className="text-xs text-muted-foreground">Emergency Tasks</p>
               </div>
             </CardContent>
           </Card>
@@ -456,28 +507,28 @@ export default function DailySummary() {
 
         {/* Summary Content */}
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Assignments Worked On Today */}
+          {/* Task Status Overview */}
           <Card className="border-0 shadow-soft">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <Timer className="h-5 w-5 text-primary" />
-                Worked On {isToday(selectedDate) ? "Today" : `on ${format(selectedDate, "MMM d")}`}
+                <Activity className="h-5 w-5 text-primary" />
+                Task Status {isToday(selectedDate) ? "Today" : `for ${format(selectedDate, "MMM d")}`}
               </CardTitle>
-              <CardDescription>{workedOnToday.length} task(s) with time tracking</CardDescription>
+              <CardDescription>{assignments?.length || 0} task(s) with status tracking</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? (
                 <div className="flex justify-center py-8">
                   <LoadingSpinner />
                 </div>
-              ) : workedOnToday.length === 0 ? (
+              ) : !assignments || assignments.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  <Timer className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p>No time tracked on this date</p>
+                  <Activity className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <p>No tasks for this date</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {workedOnToday.map((assignment) => (
+                  {assignments.map((assignment) => (
                     <div
                       key={assignment.id}
                       className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
@@ -485,8 +536,10 @@ export default function DailySummary() {
                       <div className="space-y-1 flex-1">
                         <p className="font-medium">{assignment.title}</p>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Timer className="h-3 w-3" />
-                          <span>{formatDuration(assignment.total_duration_minutes || 0)}</span>
+                          <CategoryBadge category={assignment.category} />
+                          {assignment.due_date && (
+                            <span>Due: {format(new Date(assignment.due_date), "MMM d")}</span>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

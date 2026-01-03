@@ -6,8 +6,6 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { TodayAssignments } from "@/components/dashboard/TodayAssignments";
 import { OverdueAssignments } from "@/components/dashboard/OverdueAssignments";
 import { QuickActions } from "@/components/dashboard/QuickActions";
-import { AttendanceWidget } from "@/components/dashboard/AttendanceWidget";
-import { AttendanceCard } from "@/components/attendance/AttendanceCard";
 import { CreateAssignmentModal } from "@/components/assignments/CreateAssignmentModal";
 import { AssignmentDetailModal } from "@/components/assignments/AssignmentDetailModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -143,13 +141,6 @@ export default function Dashboard() {
 
           {/* Quick Actions Sidebar */}
           <div className="space-y-6">
-            {/* Attendance Card for employees, Widget for directors */}
-            {isDirector ? (
-              <AttendanceWidget />
-            ) : (
-              <AttendanceCard />
-            )}
-            
             <QuickActions
               isDirector={isDirector}
               onCreateSelfAssignment={() => setShowCreateModal(true)}
