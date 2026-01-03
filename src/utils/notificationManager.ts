@@ -39,25 +39,19 @@ class NotificationManager {
     
     // Skip if already processed recently
     if (this.processedNotifications.has(notificationKey)) {
-      console.log(`Notification already processed: ${notificationKey}`);
       return;
     }
 
     // Check if notifications are supported
     if (!isDesktopNotificationSupported()) {
-      console.log('Desktop notifications not supported, skipping notification');
       return;
     }
 
     // Request permission if not already requested
     if (!notificationPermissionManager.hasRequestedPermission()) {
-      console.log('Requesting notification permission...');
       notificationPermissionManager.requestPermission().then(granted => {
         if (granted) {
-          console.log('Permission granted, adding notification to queue');
           this.addToQueue(event);
-        } else {
-          console.log('Permission denied, skipping notification');
         }
       });
     } else {
@@ -67,8 +61,6 @@ class NotificationManager {
   }
 
   private addToQueue(event: NotificationEvent) {
-    console.log(`Adding notification to queue: ${event.type} - ${event.data.title}`);
-    
     // Add to queue
     this.notificationQueue.push({
       ...event,

@@ -35,20 +35,12 @@ class NotificationPermissionManager {
     try {
       // Check if already supported and granted
       if (isDesktopNotificationSupported()) {
-        console.log('Notification permission already granted');
         return true;
       }
 
       // Request permission
-      console.log('Requesting notification permission...');
       const granted = await requestDesktopNotificationPermission();
       
-      if (granted) {
-        console.log('Notification permission granted');
-      } else {
-        console.log('Notification permission denied');
-      }
-
       this.permissionRequested = true;
       return granted;
     } catch (error) {

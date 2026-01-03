@@ -13,7 +13,6 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { useElectronValidation } from "@/utils/validation";
 import { notificationPermissionManager } from "@/utils/notificationPermission";
-import { NotificationDebugger } from "@/components/debug/NotificationDebugger";
 
 // Lazy load pages for better performance
 const Auth = lazy(() => import("./pages/Auth"));
@@ -58,11 +57,8 @@ const App = () => {
   useEffect(() => {
     // Request notification permission after a short delay to ensure page is loaded
     const timer = setTimeout(() => {
-      console.log('Proactively requesting notification permissions...');
-      notificationPermissionManager.requestPermission().then(granted => {
-        console.log(`Notification permission ${granted ? 'granted' : 'denied'}`);
-      });
-    }, 2000); // 2 seconds after app load
+      notificationPermissionManager.requestPermission();
+    }, 3000); // 3 seconds after app load
 
     return () => clearTimeout(timer);
   }, []);
@@ -75,7 +71,6 @@ const App = () => {
           <Sonner />
           <OfflineIndicator />
           <InstallPrompt />
-          <NotificationDebugger />
           <BrowserRouter>
             <AuthProvider>
               <RealtimeProvider>
