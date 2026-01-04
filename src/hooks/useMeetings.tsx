@@ -114,8 +114,8 @@ export function useCreateMeeting() {
     mutationFn: async (input: CreateMeetingInput) => {
       if (!user?.id) throw new Error('Not authenticated');
 
-      // Create meeting and participants atomically
-      const { data, error } = await supabase
+      // Create meeting first
+      const { data: meeting, error: meetingError } = await supabase
         .from('meetings')
         .insert({
           title: input.title,
@@ -127,14 +127,14 @@ export function useCreateMeeting() {
         .select()
         .single();
 
-      if (error) throw error;
-      if (!data) throw new Error('Failed to create meeting');
+      if (meetingError) throw meetingError;
+      if (!meeting) throw new Error('Failed to create meeting');
 
-      // Add participants (including creator)
+      // Add all participants including creator
       const allParticipantIds = [...new Set([...input.participant_ids, user.id])];
       
       const participantsToInsert = allParticipantIds.map(userId => ({
-        meeting_id: data.id,
+        meeting_id: meeting.id,
         user_id: userId
       }));
 
@@ -143,12 +143,12 @@ export function useCreateMeeting() {
         .insert(participantsToInsert);
 
       if (participantsError) {
-        // Rollback meeting creation if participants fail
-        await supabase.from('meetings').delete().eq('id', data.id);
+        // Clean up the meeting if participants fail
+        await supabase.from('meetings').delete().eq('id', meeting.id);
         throw participantsError;
       }
 
-      return data;
+      return meeting;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
