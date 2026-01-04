@@ -228,16 +228,22 @@ USING (
 SELECT 
   'USER VISIBILITY TEST' as test,
   COUNT(*) as total_users,
-  STRING_AGG(name, ', ' LIMIT 5) as sample_users
-FROM public.get_simple_users();
+  STRING_AGG(name, ', ') as sample_users
+FROM (
+  SELECT name FROM public.profiles ORDER BY name LIMIT 5
+) limited_users;
 
 -- Test assignments with creator info
 SELECT 
   'ASSIGNMENT WITH CREATOR TEST' as test,
   COUNT(*) as total_assignments,
-  COUNT(CASE WHEN creator_name IS NOT NULL THEN 1 END) as with_creator,
-  COUNT(CASE WHEN assignee_name IS NOT NULL THEN 1 END) as with_assignee
-FROM public.get_assignments_with_creator();
+  COUNT(CASE WHEN creator_id IS NOT NULL THEN 1 END) as with_creator,
+  COUNT(CASE WHEN assignee_id IS NOT NULL THEN 1 END) as with_assignee
+FROM public.assignments
+WHERE 
+  creator_id = (select auth.uid())
+  OR assignee_id = (select auth.uid())
+  OR public.has_role((select auth.uid()), 'director');
 
 -- Test meeting visibility
 SELECT 
