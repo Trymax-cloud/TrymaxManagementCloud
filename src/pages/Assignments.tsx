@@ -17,6 +17,7 @@ import { useAssignments, useMyAssignments, type Assignment, type AssignmentFilte
 import { type AssignmentWithRelations } from "@/types/assignment-relations";
 import { useSimpleAssignments, useSimpleMyAssignments } from "@/hooks/useSimpleAssignments";
 import { useAssignmentsWithProfiles, useMyAssignmentsWithProfiles } from "@/hooks/useAssignmentsWithProfiles";
+import { useAssignmentsWithCreator } from "@/hooks/useSimpleUsers";
 import { useActiveProjects } from "@/hooks/useProjects";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAuth } from "@/hooks/useAuth";

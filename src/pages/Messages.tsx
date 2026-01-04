@@ -14,7 +14,7 @@ import {
   useMarkMessagesAsRead,
   Conversation 
 } from '@/hooks/useMessages';
-import { useAllUsers } from '@/hooks/useAllUsers';
+import { useAllUsers } from '@/hooks/useSimpleUsers';
 import { useAuth } from '@/hooks/useAuth';
 import { MessageSquare, Send, ArrowLeft, Users } from 'lucide-react';
 import { format } from 'date-fns';

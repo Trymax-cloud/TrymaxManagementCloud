@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCreateMeeting } from '@/hooks/useMeetings';
-import { useAllUsers } from '@/hooks/useAllUsers';
+import { useAllUsers } from '@/hooks/useSimpleUsers';
 import { useAuth } from '@/hooks/useAuth';
 import { X, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
