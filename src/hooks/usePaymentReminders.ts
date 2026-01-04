@@ -96,9 +96,9 @@ export function useDeletePayment() {
         description: "Payment has been removed successfully",
       });
 
-      // Refresh payments data immediately
+      // Targeted invalidation instead of global refetch
       queryClient.invalidateQueries({ queryKey: ["client_payments"] });
-      queryClient.refetchQueries({ queryKey: ["client_payments"] });
+      // Don't use refetchQueries - it causes unnecessary network requests
     },
     onError: (error) => {
       console.error("Delete mutation error:", error);

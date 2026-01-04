@@ -30,17 +30,25 @@ export function useRealtimeAssignments() {
         (payload) => {
           console.log("Assignment change:", payload);
           
-          // Invalidate all assignment-related queries for comprehensive refresh
+          // Targeted invalidation instead of global invalidation
+          // Only invalidate the most relevant queries
           queryClient.invalidateQueries({ queryKey: ["assignments"] });
           queryClient.invalidateQueries({ queryKey: ["my-assignments"] });
-          queryClient.invalidateQueries({ queryKey: ["assignments-with-profiles"] });
-          queryClient.invalidateQueries({ queryKey: ["my-assignments-with-profiles"] });
-          queryClient.invalidateQueries({ queryKey: ["assignment-stats"] });
-          queryClient.invalidateQueries({ queryKey: ["overdue-assignments"] });
-          queryClient.invalidateQueries({ queryKey: ["overdue-assignments-with-profiles"] });
-          queryClient.invalidateQueries({ queryKey: ["daily-summary"] });
-          queryClient.invalidateQueries({ queryKey: ["analytics"] });
-          queryClient.invalidateQueries({ queryKey: ["payment-analytics"] });
+          
+          // Only invalidate profile queries if assignment assignee changed
+          if (payload.eventType === "UPDATE" && 
+              payload.old?.assignee_id !== payload.new?.assignee_id) {
+            queryClient.invalidateQueries({ queryKey: ["assignments-with-profiles"] });
+            queryClient.invalidateQueries({ queryKey: ["my-assignments-with-profiles"] });
+          }
+          
+          // Only invalidate stats if assignment status changed
+          if (payload.eventType === "UPDATE" && 
+              payload.old?.status !== payload.new?.status) {
+            queryClient.invalidateQueries({ queryKey: ["assignment-stats"] });
+            queryClient.invalidateQueries({ queryKey: ["overdue-assignments"] });
+            queryClient.invalidateQueries({ queryKey: ["daily-summary"] });
+          }
 
           // Show toast for relevant updates
           if (payload.eventType === "INSERT") {
@@ -48,8 +56,7 @@ export function useRealtimeAssignments() {
             if (newAssignment.assignee_id === user.id) {
               toast({
                 title: "New Assignment",
-                description: `You have been assigned: ${newAssignment.title}`,
-                variant: newAssignment.priority === "emergency" ? "destructive" : "default",
+                description: newAssignment.title,
               });
               
               // Queue desktop notification
@@ -64,52 +71,22 @@ export function useRealtimeAssignments() {
                 timestamp: Date.now(),
               });
             }
-          }
-
-          if (payload.eventType === "UPDATE") {
-            const updated = payload.new as { 
-              assignee_id: string; 
-              status: string; 
-              title: string; 
-              due_date: string;
-              priority: string;
-            };
-            
-            // Task completed notification
+          } else if (payload.eventType === "UPDATE") {
+            const updated = payload.new as { assignee_id: string; status: string; title: string; due_date: string; priority: string; };
             if (updated.assignee_id === user.id && updated.status === "completed") {
-              toast({
-                title: "Assignment Completed",
-                description: `"${updated.title}" marked as completed`,
-              });
-              
-              // Queue desktop notification
               notificationManager.addNotificationEvent({
                 type: 'task-completed',
-                data: {
-                  id: payload.new.id,
-                  title: updated.title,
-                  priority: updated.priority,
-                  assignee_id: updated.assignee_id,
-                },
+                data: { id: payload.new.id, title: updated.title, priority: updated.priority, assignee_id: updated.assignee_id },
                 timestamp: Date.now(),
               });
             }
-            
-            // Task overdue notification
             if (updated.assignee_id === user.id && updated.status !== "completed" && updated.due_date) {
               const dueDate = new Date(updated.due_date);
               const now = new Date();
-              
               if (dueDate < now) {
-                // Queue desktop notification
                 notificationManager.addNotificationEvent({
                   type: 'task-overdue',
-                  data: {
-                    id: payload.new.id,
-                    title: updated.title,
-                    priority: updated.priority,
-                    assignee_id: updated.assignee_id,
-                  },
+                  data: { id: payload.new.id, title: updated.title, priority: updated.priority, assignee_id: updated.assignee_id },
                   timestamp: Date.now(),
                 });
               }
@@ -121,10 +98,8 @@ export function useRealtimeAssignments() {
 
     return () => {
       supabase.removeChannel(channel);
-      // Clean up notification manager on unmount
-      notificationManager.clear();
     };
-  }, [user?.id, queryClient]);
+  }, [user?.id, queryClient, toast]);
 }
 
 export function useRealtimeProjects() {

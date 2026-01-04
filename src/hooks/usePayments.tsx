@@ -37,13 +37,30 @@ export function usePayments() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("client_payments")
-        .select("*")
+        .select(`
+          id,
+          client_name,
+          project_id,
+          invoice_amount,
+          amount_paid,
+          invoice_date,
+          due_date,
+          status,
+          responsible_user_id,
+          remarks,
+          created_at,
+          updated_at
+        `)
         .order("due_date", { ascending: true });
 
       if (error) throw error;
       return data as ClientPayment[];
     },
     enabled: !!user,
+    staleTime: 60 * 1000, // 60 seconds
+    placeholderData: (previousData) => previousData, // Replaces keepPreviousData
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -55,7 +72,20 @@ export function useMyPayments() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("client_payments")
-        .select("*")
+        .select(`
+          id,
+          client_name,
+          project_id,
+          invoice_amount,
+          amount_paid,
+          invoice_date,
+          due_date,
+          status,
+          responsible_user_id,
+          remarks,
+          created_at,
+          updated_at
+        `)
         .eq("responsible_user_id", user!.id)
         .order("due_date", { ascending: true });
 
@@ -63,6 +93,10 @@ export function useMyPayments() {
       return data as ClientPayment[];
     },
     enabled: !!user,
+    staleTime: 60 * 1000, // 60 seconds
+    placeholderData: (previousData) => previousData,
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -75,7 +109,20 @@ export function useOverduePayments() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("client_payments")
-        .select("*")
+        .select(`
+          id,
+          client_name,
+          project_id,
+          invoice_amount,
+          amount_paid,
+          invoice_date,
+          due_date,
+          status,
+          responsible_user_id,
+          remarks,
+          created_at,
+          updated_at
+        `)
         .neq("status", "paid")
         .lt("due_date", today)
         .order("due_date", { ascending: true });
@@ -84,6 +131,10 @@ export function useOverduePayments() {
       return data as ClientPayment[];
     },
     enabled: !!user,
+    staleTime: 60 * 1000, // 60 seconds
+    placeholderData: (previousData) => previousData,
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -113,6 +164,7 @@ export function useCreatePayment() {
       return data;
     },
     onSuccess: () => {
+      // Targeted invalidation instead of global
       queryClient.invalidateQueries({ queryKey: ["payments"] });
       queryClient.invalidateQueries({ queryKey: ["my-payments"] });
       queryClient.invalidateQueries({ queryKey: ["overdue-payments"] });
@@ -155,6 +207,7 @@ export function useUpdatePayment() {
       return data;
     },
     onSuccess: () => {
+      // Targeted invalidation instead of global
       queryClient.invalidateQueries({ queryKey: ["payments"] });
       queryClient.invalidateQueries({ queryKey: ["my-payments"] });
       queryClient.invalidateQueries({ queryKey: ["overdue-payments"] });
@@ -187,6 +240,7 @@ export function useDeletePayment() {
       if (error) throw error;
     },
     onSuccess: () => {
+      // Targeted invalidation instead of global
       queryClient.invalidateQueries({ queryKey: ["payments"] });
       queryClient.invalidateQueries({ queryKey: ["my-payments"] });
       queryClient.invalidateQueries({ queryKey: ["overdue-payments"] });

@@ -41,10 +41,15 @@ const PageLoader = () => (
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      staleTime: 1000 * 60 * 2, // 2 minutes (reduced from 5 for better freshness)
       gcTime: 1000 * 60 * 30, // 30 minutes (formerly cacheTime)
-      retry: 2,
-      refetchOnWindowFocus: false,
+      retry: 1, // Reduced from 2 to prevent excessive retries
+      refetchOnWindowFocus: false, // Already disabled - good for performance
+      refetchOnReconnect: true, // Keep this for network recovery
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000), // Exponential backoff
+    },
+    mutations: {
+      retry: 1, // Add retry for mutations
     },
   },
 });
