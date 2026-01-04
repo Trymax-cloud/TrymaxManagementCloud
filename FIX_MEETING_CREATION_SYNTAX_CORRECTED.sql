@@ -124,10 +124,10 @@ DROP FUNCTION IF EXISTS public.create_meeting_with_participants();
 -- Function to safely create meeting with participants
 CREATE OR REPLACE FUNCTION public.create_meeting_with_participants(
   meeting_title TEXT,
-  meeting_note TEXT DEFAULT NULL,
+  meeting_note TEXT,
   meeting_date DATE,
   meeting_time TIME,
-  participant_ids UUID[] DEFAULT NULL
+  participant_ids UUID[]
 )
 RETURNS UUID
 LANGUAGE plpgsql
@@ -138,6 +138,11 @@ DECLARE
   new_meeting_id UUID;
   participant_id UUID;
 BEGIN
+  -- Handle NULL note parameter
+  IF meeting_note IS NULL THEN
+    meeting_note := NULL;
+  END IF;
+  
   -- Create the meeting first
   INSERT INTO public.meetings (
     title,
@@ -243,7 +248,7 @@ SELECT
   'MEETING CREATION TEST' as test,
   public.create_meeting_with_participants(
     'Test Meeting',
-    'This is a test meeting',
+    NULL,
     CURRENT_DATE + INTERVAL '1 day',
     '10:00:00',
     ARRAY[(SELECT id FROM public.profiles WHERE id != (select auth.uid()) LIMIT 1)]
