@@ -1,18 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { format, addDays, subDays, startOfDay, endOfDay, isToday } from "date-fns";
-import { CalendarIcon, ChevronLeft, ChevronRight, Download, Printer, CheckCircle2, Clock, AlertTriangle, FileText, Save, Users, ChevronDown, ChevronUp, StickyNote, TrendingUp, Target, Activity } from "lucide-react";
+import { CalendarIcon, ChevronLeft, ChevronRight, CheckCircle2, Clock, AlertTriangle, Save, Users } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { StatusBadge, PriorityBadge } from "@/components/ui/status-badge";
-import { CategoryBadge } from "@/components/ui/category-badge";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useMyAssignmentsWithProfiles, useAssignmentsWithProfiles } from "@/hooks/useAssignmentsWithProfiles";
 import { useSaveDailySummary, useDailySummaries, useAllEmployeeDailySummaries } from "@/hooks/useDailySummaryData";
 import { useAuth } from "@/hooks/useAuth";
@@ -63,15 +59,14 @@ export default function DailySummary() {
     return completionDate >= dateStart && completionDate <= dateEnd;
   }) || [];
 
-  // Stats for the day
+  // Clean stats - no time tracking, no duplicates
   const stats = {
     dueToday: todayAssignments.length,
     completed: completedToday.length,
     inProgress: todayAssignments.filter(a => a.status === "in_progress").length,
     pending: todayAssignments.filter(a => a.status === "not_started").length,
     emergency: todayAssignments.filter(a => a.priority === "emergency").length,
-    workedOn: 0, // Removed time tracking
-    totalTimeMinutes: 0, // Removed time tracking
+    completionRate: todayAssignments.length > 0 ? Math.round((completedToday.length / todayAssignments.length) * 100) : 0,
   };
 
   const navigateDate = (direction: "prev" | "next") => {
@@ -121,16 +116,6 @@ export default function DailySummary() {
             <p className="text-muted-foreground">
               View daily reports for all employees
             </p>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="gap-2">
-                <Download className="h-4 w-4" />
-                Export
-              </Button>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Printer className="h-4 w-4" />
-                Print
-              </Button>
-            </div>
           </div>
 
           {/* Date Navigation */}
@@ -173,7 +158,7 @@ export default function DailySummary() {
             </CardContent>
           </Card>
 
-          {/* Employee-wise Summary */}
+          {/* Employee Summary */}
           <Card className="border-0 shadow-soft">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
@@ -201,79 +186,60 @@ export default function DailySummary() {
                     const hasNotes = !!summary.notes;
                     
                     return (
-                      <Collapsible
-                        key={summary.userId}
-                        open={isExpanded}
-                        onOpenChange={() => toggleEmployeeExpanded(summary.userId)}
-                      >
-                        <div className="rounded-lg border bg-card overflow-hidden">
-                          <CollapsibleTrigger asChild>
-                            <button
-                              className={cn(
-                                "w-full flex items-center justify-between p-4 hover:bg-accent/50 transition-colors text-left",
-                                isExpanded && "bg-accent/30"
+                      <div key={summary.userId} className="rounded-lg border bg-card overflow-hidden">
+                        <button
+                          className={cn(
+                            "w-full flex items-center justify-between p-4 hover:bg-accent/50 transition-colors text-left",
+                            isExpanded && "bg-accent/30"
+                          )}
+                          onClick={() => toggleEmployeeExpanded(summary.userId)}
+                        >
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{summary.userName}</p>
+                              {hasNotes && (
+                                <Badge variant="secondary" className="text-xs">Notes</Badge>
                               )}
-                            >
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-medium">{summary.userName}</p>
-                                  {hasNotes && (
-                                    <Badge variant="secondary" className="text-xs gap-1">
-                                      <StickyNote className="h-3 w-3" />
-                                      Notes
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="text-sm text-muted-foreground">{summary.userEmail}</p>
-                              </div>
-                              <div className="flex items-center gap-4 text-sm">
-                                <div className="text-center">
-                                  <p className="text-lg font-bold text-success">{summary.tasksCompleted}</p>
-                                  <p className="text-xs text-muted-foreground">Completed</p>
-                                </div>
-                                <div className="text-center">
-                                  <p className="text-lg font-bold text-info">{summary.tasksInProgress}</p>
-                                  <p className="text-xs text-muted-foreground">In Progress</p>
-                                </div>
-                                <div className="text-center">
-                                  <p className="text-lg font-bold">{summary.tasksPending}</p>
-                                  <p className="text-xs text-muted-foreground">Pending</p>
-                                </div>
-                                <div className="text-center">
-                                  <p className="text-lg font-bold">{summary.tasksDue}</p>
-                                  <p className="text-xs text-muted-foreground">Due</p>
-                                </div>
-                                <div className="ml-2">
-                                  {isExpanded ? (
-                                    <ChevronUp className="h-5 w-5 text-muted-foreground" />
-                                  ) : (
-                                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                                  )}
-                                </div>
-                              </div>
-                            </button>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <div className="px-4 pb-4 pt-2 border-t bg-muted/30">
-                              <div className="flex items-start gap-2">
-                                <StickyNote className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium mb-1">Daily Notes</p>
-                                  {summary.notes ? (
-                                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                      {summary.notes}
-                                    </p>
-                                  ) : (
-                                    <p className="text-sm text-muted-foreground italic">
-                                      No notes added for this day
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
                             </div>
-                          </CollapsibleContent>
-                        </div>
-                      </Collapsible>
+                            <p className="text-sm text-muted-foreground">{summary.userEmail}</p>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm">
+                            <div className="text-center">
+                              <p className="text-lg font-bold text-green-600">{summary.tasksCompleted}</p>
+                              <p className="text-xs text-muted-foreground">Completed</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-lg font-bold text-blue-600">{summary.tasksInProgress}</p>
+                              <p className="text-xs text-muted-foreground">In Progress</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-lg font-bold text-amber-600">{summary.tasksPending}</p>
+                              <p className="text-xs text-muted-foreground">Pending</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-lg font-bold text-red-600">{summary.emergencyTasks}</p>
+                              <p className="text-xs text-muted-foreground">Emergency</p>
+                            </div>
+                          </div>
+                        </button>
+                        
+                        {isExpanded && (
+                          <div className="px-4 pb-4 pt-2 border-t bg-muted/30">
+                            <div className="text-sm">
+                              <p className="font-medium mb-1">Daily Notes</p>
+                              {summary.notes ? (
+                                <p className="text-muted-foreground whitespace-pre-wrap">
+                                  {summary.notes}
+                                </p>
+                              ) : (
+                                <p className="text-muted-foreground italic">
+                                  No notes added for this day
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
@@ -292,16 +258,6 @@ export default function DailySummary() {
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-muted-foreground">Your daily work summary</p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Printer className="h-4 w-4" />
-              Print
-            </Button>
-          </div>
         </div>
 
         {/* Date Navigation */}
@@ -344,7 +300,7 @@ export default function DailySummary() {
           </CardContent>
         </Card>
 
-        {/* Productivity Metrics */}
+        {/* Clean Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="border-0 shadow-soft">
             <CardContent className="p-4 flex items-center gap-3">
@@ -361,7 +317,7 @@ export default function DailySummary() {
           <Card className="border-0 shadow-soft">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <Activity className="h-5 w-5 text-blue-500" />
+                <Clock className="h-5 w-5 text-blue-500" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.inProgress}</p>
@@ -373,7 +329,7 @@ export default function DailySummary() {
           <Card className="border-0 shadow-soft">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <Clock className="h-5 w-5 text-amber-500" />
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.pending}</p>
@@ -385,81 +341,11 @@ export default function DailySummary() {
           <Card className="border-0 shadow-soft">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                <Target className="h-5 w-5 text-purple-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{(stats.completed + stats.inProgress + stats.pending) > 0 ? Math.round((stats.completed / (stats.completed + stats.inProgress + stats.pending)) * 100) : 0}%</p>
-                <p className="text-xs text-muted-foreground">Completion Rate</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Stats Overview */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
-          <Card className="border-0 shadow-soft">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <FileText className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.dueToday}</p>
-                <p className="text-xs text-muted-foreground">Due Today</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-soft">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center">
-                <CheckCircle2 className="h-5 w-5 text-success" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-success">{stats.completed}</p>
-                <p className="text-xs text-muted-foreground">Completed</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-soft">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-info/10 flex items-center justify-center">
-                <Clock className="h-5 w-5 text-info" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-info">{stats.inProgress}</p>
-                <p className="text-xs text-muted-foreground">In Progress</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-soft">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                <Clock className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.pending}</p>
-                <p className="text-xs text-muted-foreground">Pending</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-soft">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-emergency/10 flex items-center justify-center">
-                <AlertTriangle className="h-5 w-5 text-emergency" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-emergency">{stats.emergency}</p>
-                <p className="text-xs text-muted-foreground">Emergency</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-soft">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-red-500/10 flex items-center justify-center">
-                <AlertTriangle className="h-5 w-5 text-red-500" />
+                <AlertTriangle className="h-5 w-5 text-purple-500" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.emergency}</p>
-                <p className="text-xs text-muted-foreground">Emergency Tasks</p>
+                <p className="text-xs text-muted-foreground">Emergency</p>
               </div>
             </CardContent>
           </Card>
@@ -495,137 +381,6 @@ export default function DailySummary() {
               )}
               Save Notes
             </Button>
-          </CardContent>
-        </Card>
-
-        {/* Summary Content */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Task Status Overview */}
-          <Card className="border-0 shadow-soft">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Activity className="h-5 w-5 text-primary" />
-                Task Status {isToday(selectedDate) ? "Today" : `for ${format(selectedDate, "MMM d")}`}
-              </CardTitle>
-              <CardDescription>{assignments?.length || 0} task(s) with status tracking</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex justify-center py-8">
-                  <LoadingSpinner />
-                </div>
-              ) : !assignments || assignments.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Activity className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p>No tasks for this date</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {assignments.map((assignment) => (
-                    <div
-                      key={assignment.id}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-                    >
-                      <div className="space-y-1 flex-1">
-                        <p className="font-medium">{assignment.title}</p>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <CategoryBadge category={assignment.category} />
-                          {assignment.due_date && (
-                            <span>Due: {format(new Date(assignment.due_date), "MMM d")}</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <PriorityBadge priority={assignment.priority as AssignmentPriority} />
-                        <StatusBadge status={assignment.status as AssignmentStatus} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Completed Today */}
-          <Card className="border-0 shadow-soft">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-success" />
-                Completed {isToday(selectedDate) ? "Today" : `on ${format(selectedDate, "MMM d")}`}
-              </CardTitle>
-              <CardDescription>{completedToday.length} task(s) completed</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex justify-center py-8">
-                  <LoadingSpinner />
-                </div>
-              ) : completedToday.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <CheckCircle2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p>No tasks completed on this date</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {completedToday.map((assignment) => (
-                    <div
-                      key={assignment.id}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-success/5 border-success/20"
-                    >
-                      <div className="space-y-1">
-                        <p className="font-medium flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-success" />
-                          {assignment.title}
-                        </p>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <CategoryBadge category={assignment.category} />
-                          {assignment.due_date && (
-                            <span>Due: {format(new Date(assignment.due_date), "MMM d")}</span>
-                          )}
-                        </div>
-                      </div>
-                      <PriorityBadge priority={assignment.priority as AssignmentPriority} />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Print-friendly summary */}
-        <Card className="border-0 shadow-soft print:shadow-none">
-          <CardHeader>
-            <CardTitle className="text-lg">Daily Summary Report</CardTitle>
-            <CardDescription>
-              Report for {userName} - {format(selectedDate, "MMMM d, yyyy")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Total Due:</span>
-                  <span className="font-medium ml-2">{stats.dueToday}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Completed:</span>
-                  <span className="font-medium ml-2 text-success">{stats.completed}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">In Progress:</span>
-                  <span className="font-medium ml-2 text-info">{stats.inProgress}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Pending:</span>
-                  <span className="font-medium ml-2 text-warning">{stats.pending}</span>
-                </div>
-              </div>
-              <Separator />
-              <p className="text-sm text-muted-foreground">
-                Completion Rate: {stats.dueToday > 0 ? Math.round((stats.completed / stats.dueToday) * 100) : 0}%
-              </p>
-            </div>
           </CardContent>
         </Card>
       </div>
