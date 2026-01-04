@@ -14,7 +14,7 @@ import {
   useMarkMessagesAsRead,
   Conversation 
 } from '@/hooks/useMessages';
-import { useProfiles } from '@/hooks/useProfiles';
+import { useAllUsers } from '@/hooks/useAllUsers';
 import { useAuth } from '@/hooks/useAuth';
 import { MessageSquare, Send, ArrowLeft, Users } from 'lucide-react';
 import { format } from 'date-fns';
@@ -36,7 +36,7 @@ export default function Messages() {
 
   const { data: conversations, isLoading: conversationsLoading } = useConversations();
   const { data: messages, isLoading: messagesLoading } = useConversationMessages(selectedUserId);
-  const { data: profiles } = useProfiles();
+  const { data: users } = useAllUsers();
   const sendMessage = useSendMessage();
   const markAsRead = useMarkMessagesAsRead();
 
@@ -75,7 +75,7 @@ export default function Messages() {
   };
 
   // Filter out current user from profiles for new chat
-  const availableUsers = profiles?.filter(p => p.id !== user?.id) || [];
+  const availableUsers = users?.filter(p => p.id !== user?.id) || [];
 
   return (
     <AppLayout>
@@ -207,10 +207,10 @@ export default function Messages() {
                   </Avatar>
                   <div>
                     <p className="font-semibold">
-                      {selectedConversation?.user_name || profiles?.find(p => p.id === selectedUserId)?.name || 'Unknown'}
+                      {selectedConversation?.user_name || users?.find(p => p.id === selectedUserId)?.name || 'Unknown'}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {selectedConversation?.user_email || profiles?.find(p => p.id === selectedUserId)?.email}
+                      {selectedConversation?.user_email || users?.find(p => p.id === selectedUserId)?.email}
                     </p>
                   </div>
                 </div>

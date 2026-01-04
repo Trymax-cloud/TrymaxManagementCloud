@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCreateMeeting } from '@/hooks/useMeetings';
-import { useProfiles } from '@/hooks/useProfiles';
+import { useAllUsers } from '@/hooks/useAllUsers';
 import { useAuth } from '@/hooks/useAuth';
 import { X, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -25,7 +25,7 @@ interface CreateMeetingModalProps {
 
 export function CreateMeetingModal({ open, onOpenChange }: CreateMeetingModalProps) {
   const { user } = useAuth();
-  const { data: profiles } = useProfiles();
+  const { data: users } = useAllUsers();
   const createMeeting = useCreateMeeting();
 
   const [title, setTitle] = useState('');
@@ -34,7 +34,7 @@ export function CreateMeetingModal({ open, onOpenChange }: CreateMeetingModalPro
   const [meetingTime, setMeetingTime] = useState('');
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
 
-  const availableParticipants = profiles?.filter(p => p.id !== user?.id) || [];
+  const availableParticipants = users?.filter(p => p.id !== user?.id) || [];
 
   const toggleParticipant = (userId: string) => {
     setSelectedParticipants(prev => 
@@ -143,7 +143,7 @@ export function CreateMeetingModal({ open, onOpenChange }: CreateMeetingModalPro
             {selectedParticipants.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-2">
                 {selectedParticipants.map(id => {
-                  const profile = profiles?.find(p => p.id === id);
+                  const profile = users?.find(p => p.id === id);
                   return (
                     <Badge key={id} variant="secondary" className="gap-1">
                       {profile?.name || 'Unknown'}
