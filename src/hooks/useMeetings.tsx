@@ -114,8 +114,8 @@ export function useCreateMeeting() {
     mutationFn: async (input: CreateMeetingInput) => {
       if (!user?.id) throw new Error('Not authenticated');
 
-      // Create meeting
-      const { data: meeting, error: meetingError } = await supabase
+      // Create meeting and participants atomically
+      const { data, error } = await supabase
         .from('meetings')
         .insert({
           title: input.title,
@@ -127,13 +127,14 @@ export function useCreateMeeting() {
         .select()
         .single();
 
-      if (meetingError) throw meetingError;
+      if (error) throw error;
+      if (!data) throw new Error('Failed to create meeting');
 
       // Add participants (including creator)
       const allParticipantIds = [...new Set([...input.participant_ids, user.id])];
       
       const participantsToInsert = allParticipantIds.map(userId => ({
-        meeting_id: meeting.id,
+        meeting_id: data.id,
         user_id: userId
       }));
 
@@ -141,23 +142,20 @@ export function useCreateMeeting() {
         .from('meeting_participants')
         .insert(participantsToInsert);
 
-      if (participantsError) throw participantsError;
+      if (participantsError) {
+        // Rollback meeting creation if participants fail
+        await supabase.from('meetings').delete().eq('id', data.id);
+        throw participantsError;
+      }
 
-      return meeting;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
-      toast({
-        title: 'Meeting created',
-        description: 'Participants have been notified.'
-      });
+      queryClient.invalidateQueries({ queryKey: ['user-meetings'] });
     },
-    onError: (error: Error) => {
-      toast({
-        title: 'Error creating meeting',
-        description: error.message,
-        variant: 'destructive'
-      });
+    onError: (error) => {
+      console.error('Meeting creation failed:', error);
     }
   });
 }

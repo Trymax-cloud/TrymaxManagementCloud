@@ -67,8 +67,9 @@ export function CreateMeetingModal({ open, onOpenChange }: CreateMeetingModalPro
       });
       resetForm();
       onOpenChange(false);
-    } catch {
-      // Error handled by mutation
+    } catch (error) {
+      console.error('Meeting creation failed:', error);
+      // Error will be handled by the mutation's error handling
     }
   };
 
