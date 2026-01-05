@@ -217,59 +217,33 @@ export function useAllEmployeeDailySummaries(date: Date) {
       const dateStr = format(date, "yyyy-MM-dd");
       console.log("🔍 DEBUG: Fetching all employee summaries for date:", dateStr);
 
-      // Fetch all profiles
+      // Fetch all profiles with roles
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select("id, name, email");
+        .select(`
+          id, 
+          name, 
+          email,
+          user_roles!inner(role)
+        `);
 
       if (profilesError) throw profilesError;
-      console.log("🔍 DEBUG: Profiles fetched:", profiles?.length, "profiles");
-
+      
       // Fetch all assignments for this date
       const { data: assignments, error: assignmentsError } = await supabase
         .from("assignments")
         .select("*");
 
       if (assignmentsError) throw assignmentsError;
-      console.log("🔍 DEBUG: Assignments fetched:", assignments?.length, "assignments");
 
       // Fetch all daily summaries for this date (to get notes)
-      console.log("🔍 DEBUG: Query date string:", dateStr);
-      console.log("🔍 DEBUG: Current user ID:", user?.id);
-      console.log("🔍 DEBUG: User role:", user?.user_metadata?.role);
-      
-      // Try without date filter first to see if any data exists
-      console.log("🔍 DEBUG: Checking all daily summaries without date filter...");
-      const { data: allDailySummaries, error: allSummariesError } = await supabase
-        .from("daily_summaries")
-        .select("*");
-
-      if (allSummariesError) {
-        console.log("🔍 DEBUG: All summaries query error:", allSummariesError);
-        throw allSummariesError;
-      }
-      console.log("🔍 DEBUG: All daily summaries in database:", allDailySummaries?.length || 0);
-      if (allDailySummaries && allDailySummaries.length > 0) {
-        console.log("🔍 DEBUG: Sample summary data from all:", allDailySummaries[0]);
-        console.log("🔍 DEBUG: Available dates in database:", allDailySummaries.map(s => s.date));
-      }
-      
-      // Now try with date filter
-      console.log("🔍 DEBUG: Now filtering by date:", dateStr);
       const { data: dailySummaries, error: summariesError } = await supabase
         .from("daily_summaries")
         .select("*")
         .eq("date", dateStr);
 
-      if (summariesError) {
-        console.log("🔍 DEBUG: Database query error:", summariesError);
-        throw summariesError;
-      }
-      console.log("🔍 DEBUG: Daily summaries fetched:", dailySummaries?.length || 0, "summaries");
-      console.log("🔍 DEBUG: Sample summary data:", dailySummaries?.[0]);
-      console.log("🔍 DEBUG: All summary data:", dailySummaries);
-      console.log("🔍 DEBUG: Looking for user_id matches in", dailySummaries?.length || 0, "summaries");
-
+      if (summariesError) throw summariesError;
+      
       const dateStart = startOfDay(date);
       const dateEnd = endOfDay(date);
 
@@ -300,18 +274,22 @@ export function useAllEmployeeDailySummaries(date: Date) {
           (s) => s.user_id === profile.id
         );
 
-        console.log("🔍 DEBUG: Employee:", profile.name, "Summary found:", !!employeeSummary, "Notes:", employeeSummary?.notes || 'null');
+        // Find the employee's profile with role
+        const userProfile = profiles?.find(p => p.id === profile.id);
+        const userRoles = (userProfile?.user_roles as any[]) || [];
+        const userRole = userRoles.length > 0 ? userRoles[0].role : 'employee';
 
         return {
           userId: profile.id,
           userName: profile.name,
           userEmail: profile.email,
+          userRole: userRole, // Add role information
           date,
           tasksCompleted: assignmentsCompleted.length,
           tasksDue: assignmentsDue.length,
-          tasksInProgress: assignmentsInProgress?.length || 0,
-          tasksPending: assignmentsPending?.length || 0,
-          emergencyTasks: emergencyTasks?.length || 0,
+          tasksInProgress: (assignmentsInProgress?.length || 0),
+          tasksPending: (assignmentsPending?.length || 0),
+          emergencyTasks: (emergencyTasks?.length || 0),
           completionRate:
             assignmentsDue.length > 0
               ? Math.round((assignmentsCompleted.length / assignmentsDue.length) * 100)
@@ -319,8 +297,6 @@ export function useAllEmployeeDailySummaries(date: Date) {
           notes: employeeSummary?.notes || null,
         };
       });
-
-      console.log("🔍 DEBUG: Final summaries array:", summaries);
 
       // Sort by tasks completed descending
       return summaries.sort((a, b) => b.tasksCompleted - a.tasksCompleted);
