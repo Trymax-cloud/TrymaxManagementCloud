@@ -2,13 +2,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
@@ -152,33 +149,14 @@ export function CreatePaymentModal({ open, onOpenChange }: CreatePaymentModalPro
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>Invoice Date</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? format(field.value, "PPP") : "Pick a date"}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          initialFocus
-                          className="pointer-events-auto"
-                          disabled={undefined}
-                          defaultMonth={field.value || new Date()}
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        value={field.value ? field.value.toISOString().split('T')[0] : ''}
+                        onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                        min={new Date().toISOString().split('T')[0]}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -190,33 +168,14 @@ export function CreatePaymentModal({ open, onOpenChange }: CreatePaymentModalPro
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>Due Date</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? format(field.value, "PPP") : "Pick a date"}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          initialFocus
-                          className="pointer-events-auto"
-                          disabled={undefined}
-                          defaultMonth={field.value || new Date()}
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        value={field.value ? field.value.toISOString().split('T')[0] : ''}
+                        onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                        min={new Date().toISOString().split('T')[0]}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

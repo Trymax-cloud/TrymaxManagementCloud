@@ -2,15 +2,12 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { format } from "date-fns";
-import { CalendarIcon, AlertTriangle, Check, X } from "lucide-react";
+import { AlertTriangle, Check, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
@@ -245,24 +242,13 @@ export function CreateAssignmentModal({ open, onOpenChange, isSelfAssignment = f
 
           <div className="space-y-2">
             <Label>Due Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-full justify-start", !dueDate && "text-muted-foreground")}>
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dueDate ? format(dueDate, "PPP") : "Pick a date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar 
-                  mode="single" 
-                  selected={dueDate} 
-                  onSelect={setDueDate} 
-                  className="pointer-events-auto"
-                  disabled={undefined}
-                  defaultMonth={dueDate || new Date()}
-                />
-              </PopoverContent>
-            </Popover>
+            <Input
+              type="date"
+              value={dueDate ? dueDate.toISOString().split('T')[0] : ''}
+              onChange={(e) => setDueDate(e.target.value ? new Date(e.target.value) : undefined)}
+              min={new Date().toISOString().split('T')[0]}
+              className="w-full"
+            />
           </div>
 
           <div className="space-y-3">
