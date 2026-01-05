@@ -92,7 +92,7 @@ export default function Payments() {
     try {
       const result = await sendPaymentReminders.mutateAsync();
       console.log('Payment reminders test result:', result);
-      toast.success(`Payment reminders processed: ${result.summary?.sent || 0} sent, ${result.summary?.skipped || 0} skipped`);
+      toast.success(`Payment reminders processed: ${result.sent} sent, ${result.skipped} skipped`);
     } catch (error) {
       console.error("Failed to test payment reminders:", error);
       toast.error("Failed to process payment reminders");
