@@ -235,6 +235,22 @@ export function useAllEmployeeDailySummaries(date: Date) {
 
       // Fetch all daily summaries for this date (to get notes)
       console.log("🔍 DEBUG: Query date string:", dateStr);
+      console.log("🔍 DEBUG: Current user ID:", user?.id);
+      console.log("🔍 DEBUG: User role:", user?.user_metadata?.role);
+      
+      // Try without date filter first to see if any data exists
+      const { data: allDailySummaries, error: allSummariesError } = await supabase
+        .from("daily_summaries")
+        .select("*");
+
+      if (allSummariesError) {
+        console.log("🔍 DEBUG: All summaries query error:", allSummariesError);
+        throw allSummariesError;
+      }
+      console.log("🔍 DEBUG: All daily summaries in database:", allDailySummaries?.length || 0);
+      console.log("🔍 DEBUG: Sample all summary data:", allDailySummaries?.[0]);
+      
+      // Now try with date filter
       const { data: dailySummaries, error: summariesError } = await supabase
         .from("daily_summaries")
         .select("*")
@@ -279,31 +295,7 @@ export function useAllEmployeeDailySummaries(date: Date) {
           (s) => s.user_id === profile.id
         );
 
-        // If no daily summary exists, try to get notes from individual assignments
-        let employeeNotes = employeeSummary?.notes;
-        
-        if (!employeeNotes) {
-          console.log("🔍 DEBUG: No daily summary found for", profile.name, "- checking individual assignments");
-          
-          // Look for any assignment notes for this employee on this date
-          const employeeAssignments = (assignments as Assignment[]).filter(
-            (a) => a.assignee_id === profile.id
-          );
-          
-          // Check if any assignment has notes/description for this date
-          const assignmentWithNotes = employeeAssignments.find(a => {
-            const assignmentDate = new Date(a.created_date);
-            return assignmentDate >= dateStart && assignmentDate <= dateEnd && 
-                   (a.description && a.description.trim() !== '');
-          });
-          
-          if (assignmentWithNotes?.description) {
-            employeeNotes = assignmentWithNotes.description;
-            console.log("🔍 DEBUG: Found assignment with notes for", profile.name, ":", assignmentWithNotes.description);
-          }
-        }
-
-        console.log("🔍 DEBUG: Employee:", profile.name, "Summary found:", !!employeeSummary, "Notes:", employeeNotes || 'null');
+        console.log("🔍 DEBUG: Employee:", profile.name, "Summary found:", !!employeeSummary, "Notes:", employeeSummary?.notes || 'null');
 
         return {
           userId: profile.id,
@@ -313,13 +305,13 @@ export function useAllEmployeeDailySummaries(date: Date) {
           tasksCompleted: assignmentsCompleted.length,
           tasksDue: assignmentsDue.length,
           tasksInProgress: assignmentsInProgress?.length || 0,
-          tasksPending: assignmentsPending,
+          tasksPending: assignmentsPending?.length || 0,
           emergencyTasks: emergencyTasks?.length || 0,
           completionRate:
             assignmentsDue.length > 0
               ? Math.round((assignmentsCompleted.length / assignmentsDue.length) * 100)
               : 0,
-          notes: employeeNotes || null,
+          notes: employeeSummary?.notes || null,
         };
       });
 
