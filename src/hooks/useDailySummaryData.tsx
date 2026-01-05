@@ -215,6 +215,7 @@ export function useAllEmployeeDailySummaries(date: Date) {
     queryKey: ["all-employee-summaries", format(date, "yyyy-MM-dd")],
     queryFn: async () => {
       const dateStr = format(date, "yyyy-MM-dd");
+      console.log("🔍 DEBUG: Fetching all employee summaries for date:", dateStr);
 
       // Fetch all profiles
       const { data: profiles, error: profilesError } = await supabase
@@ -222,6 +223,7 @@ export function useAllEmployeeDailySummaries(date: Date) {
         .select("id, name, email");
 
       if (profilesError) throw profilesError;
+      console.log("🔍 DEBUG: Profiles fetched:", profiles?.length, "profiles");
 
       // Fetch all assignments for this date
       const { data: assignments, error: assignmentsError } = await supabase
@@ -229,6 +231,7 @@ export function useAllEmployeeDailySummaries(date: Date) {
         .select("*");
 
       if (assignmentsError) throw assignmentsError;
+      console.log("🔍 DEBUG: Assignments fetched:", assignments?.length, "assignments");
 
       // Fetch all daily summaries for this date (to get notes)
       const { data: dailySummaries, error: summariesError } = await supabase
@@ -237,6 +240,8 @@ export function useAllEmployeeDailySummaries(date: Date) {
         .eq("date", dateStr);
 
       if (summariesError) throw summariesError;
+      console.log("🔍 DEBUG: Daily summaries fetched:", dailySummaries?.length || 0, "summaries");
+      console.log("🔍 DEBUG: Sample summary data:", dailySummaries?.[0]);
 
       const dateStart = startOfDay(date);
       const dateEnd = endOfDay(date);
@@ -259,10 +264,16 @@ export function useAllEmployeeDailySummaries(date: Date) {
           return completionDate >= dateStart && completionDate <= dateEnd;
         });
 
+        const assignmentsInProgress = assignmentsDue.filter((a) => a.status === "in_progress").length;
+        const assignmentsPending = assignmentsDue.filter((a) => a.status === "not_started").length;
+        const emergencyTasks = assignmentsDue.filter((a) => a.priority === "emergency").length;
+
         // Find the employee's saved notes for this date
         const employeeSummary = (dailySummaries as DailySummary[])?.find(
           (s) => s.user_id === profile.id
         );
+
+        console.log("🔍 DEBUG: Employee:", profile.name, "Summary found:", !!employeeSummary, "Notes:", employeeSummary?.notes || 'null');
 
         return {
           userId: profile.id,
@@ -271,9 +282,9 @@ export function useAllEmployeeDailySummaries(date: Date) {
           date,
           tasksCompleted: assignmentsCompleted.length,
           tasksDue: assignmentsDue.length,
-          tasksInProgress: assignmentsDue.filter((a) => a.status === "in_progress").length,
-          tasksPending: assignmentsDue.filter((a) => a.status === "not_started").length,
-          emergencyTasks: assignmentsDue.filter((a) => a.priority === "emergency").length,
+          tasksInProgress: assignmentsInProgress,
+          tasksPending: assignmentsPending,
+          emergencyTasks: emergencyTasks.length,
           completionRate:
             assignmentsDue.length > 0
               ? Math.round((assignmentsCompleted.length / assignmentsDue.length) * 100)
