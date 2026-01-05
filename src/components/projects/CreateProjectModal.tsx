@@ -132,6 +132,8 @@ export function CreateProjectModal({ open, onOpenChange }: CreateProjectModalPro
                           onSelect={field.onChange}
                           initialFocus
                           className="pointer-events-auto"
+                          disabled={undefined}
+                          defaultMonth={field.value || new Date()}
                         />
                       </PopoverContent>
                     </Popover>
@@ -168,6 +170,8 @@ export function CreateProjectModal({ open, onOpenChange }: CreateProjectModalPro
                           onSelect={field.onChange}
                           initialFocus
                           className="pointer-events-auto"
+                          disabled={undefined}
+                          defaultMonth={field.value || new Date()}
                         />
                       </PopoverContent>
                     </Popover>

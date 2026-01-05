@@ -174,6 +174,8 @@ export function CreatePaymentModal({ open, onOpenChange }: CreatePaymentModalPro
                           onSelect={field.onChange}
                           initialFocus
                           className="pointer-events-auto"
+                          disabled={undefined}
+                          defaultMonth={field.value || new Date()}
                         />
                       </PopoverContent>
                     </Popover>
@@ -210,6 +212,8 @@ export function CreatePaymentModal({ open, onOpenChange }: CreatePaymentModalPro
                           onSelect={field.onChange}
                           initialFocus
                           className="pointer-events-auto"
+                          disabled={undefined}
+                          defaultMonth={field.value || new Date()}
                         />
                       </PopoverContent>
                     </Popover>

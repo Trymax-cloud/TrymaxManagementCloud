@@ -253,7 +253,14 @@ export function CreateAssignmentModal({ open, onOpenChange, isSelfAssignment = f
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dueDate} onSelect={setDueDate} className="pointer-events-auto" />
+                <Calendar 
+                  mode="single" 
+                  selected={dueDate} 
+                  onSelect={setDueDate} 
+                  className="pointer-events-auto"
+                  disabled={undefined}
+                  defaultMonth={dueDate || new Date()}
+                />
               </PopoverContent>
             </Popover>
           </div>
