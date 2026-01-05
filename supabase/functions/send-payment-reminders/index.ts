@@ -75,26 +75,30 @@ serve(async (req) => {
         let reminderType = null
         let shouldSend = false
         let updateField = null
+        let updateValue = null
 
         // Check 72 HOURS REMINDER
-        if (dueDate.toDateString() === threeDaysFromNow.toDateString() && !payment.last_72h_reminder_sent) {
+        if (dueDate.toDateString() === threeDaysFromNow.toDateString() && !payment.remarks?.includes('72h_reminder_sent')) {
           reminderType = '72_hours'
           shouldSend = true
-          updateField = 'last_72h_reminder_sent'
+          updateField = 'remarks'
+          updateValue = `${payment.remarks || ''} | 72h_reminder_sent: ${now.toISOString()}`
           upcoming_72h++
         }
         // Check 24 HOURS REMINDER
-        else if (dueDate.toDateString() === tomorrow.toDateString() && !payment.last_24h_reminder_sent) {
+        else if (dueDate.toDateString() === tomorrow.toDateString() && !payment.remarks?.includes('24h_reminder_sent')) {
           reminderType = '24_hours'
           shouldSend = true
-          updateField = 'last_24h_reminder_sent'
+          updateField = 'remarks'
+          updateValue = `${payment.remarks || ''} | 24h_reminder_sent: ${now.toISOString()}`
           upcoming_24h++
         }
         // Check OVERDUE REMINDER
-        else if (dueDate < today && !payment.last_overdue_reminder_sent) {
+        else if (dueDate < today && !payment.remarks?.includes('overdue_reminder_sent')) {
           reminderType = 'overdue'
           shouldSend = true
-          updateField = 'last_overdue_reminder_sent'
+          updateField = 'remarks'
+          updateValue = `${payment.remarks || ''} | overdue_reminder_sent: ${now.toISOString()}`
           overdue++
         }
 
@@ -139,7 +143,7 @@ serve(async (req) => {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                from: 'EWPM System <noreply@ewpm.system>',
+                from: 'EWPM System <noreply@trymaxmanagement.in>',
                 to: ['client@example.com'], // This should be replaced with actual client email
                 subject,
                 html: emailHtml,
@@ -165,7 +169,7 @@ serve(async (req) => {
 
         // Update payment record with reminder timestamp
         const updateData = {
-          [updateField]: now.toISOString(),
+          [updateField]: updateValue,
           updated_at: now.toISOString()
         }
 
