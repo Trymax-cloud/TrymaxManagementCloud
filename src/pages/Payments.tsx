@@ -14,6 +14,7 @@ import { useProfiles } from "@/hooks/useProfiles";
 import { useProjects } from "@/hooks/useProjects";
 import { useUserRole } from "@/hooks/useUserRole";
 import { usePaymentReminders, useDeletePayment } from "@/hooks/usePaymentReminders";
+import { useSendPaymentReminders } from "@/hooks/useSendPaymentReminders";
 import { PaymentCard } from "@/components/payments/PaymentCard";
 import { CreatePaymentModal } from "@/components/payments/CreatePaymentModal";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +32,7 @@ export default function Payments() {
   const { data: projects } = useProjects();
   const { sendReminders, isLoading: sendingReminders } = usePaymentReminders();
   const { deletePayment, isLoading: deletingPayment } = useDeletePayment();
+  const sendPaymentReminders = useSendPaymentReminders();
   
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -83,6 +85,17 @@ export default function Payments() {
       } catch (error) {
         console.error("Failed to send reminders:", error);
       }
+    }
+  };
+
+  const handleTestPaymentReminders = async () => {
+    try {
+      const result = await sendPaymentReminders.mutateAsync();
+      console.log('Payment reminders test result:', result);
+      toast.success(`Payment reminders processed: ${result.summary?.sent || 0} sent, ${result.summary?.skipped || 0} skipped`);
+    } catch (error) {
+      console.error("Failed to test payment reminders:", error);
+      toast.error("Failed to process payment reminders");
     }
   };
 
@@ -144,6 +157,19 @@ export default function Payments() {
                 )}
                 Send Reminders
                 {selectedPayments.length > 0 && ` (${selectedPayments.length})`}
+              </Button>
+              <Button 
+                variant="secondary" 
+                className="gap-2" 
+                onClick={handleTestPaymentReminders}
+                disabled={sendPaymentReminders.isPending}
+              >
+                {sendPaymentReminders.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <AlertCircle className="h-4 w-4" />
+                )}
+                Test Auto Reminders
               </Button>
               <Button className="gap-2" onClick={() => setCreateModalOpen(true)}>
                 <Plus className="h-4 w-4" />
