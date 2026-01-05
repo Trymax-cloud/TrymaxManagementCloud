@@ -75,6 +75,8 @@ serve(async (req) => {
         let shouldSend = false
         let updateField = null
 
+        console.log(`Processing payment ${payment.id}: due_date=${payment.due_date}, dueDate=${dueDate.toDateString()}, today=${today.toDateString()}, tomorrow=${tomorrow.toDateString()}, threeDaysFromNow=${threeDaysFromNow.toDateString()}`)
+
         // Check 72 HOURS REMINDER
         if (dueDate.toDateString() === threeDaysFromNow.toDateString() && !payment.last_72h_reminder_sent) {
           reminderType = '72_hours'
@@ -99,21 +101,52 @@ serve(async (req) => {
 
         if (!shouldSend) {
           skipped++
-          console.log(`Payment ${payment.id} skipped - no reminder needed or already sent`)
+          console.log(`Payment ${payment.id} skipped - no reminder needed or already sent. Reminder type: ${reminderType}, shouldSend: ${shouldSend}`)
           continue
         }
 
         console.log(`Processing ${reminderType} reminder for payment ${payment.id}`)
 
-        // Get responsible employee name if available
-        let responsibleName = null
+        // Get responsible employee info for email
+        let recipientEmail = null
+        let recipientName = null
         if (payment.responsible_user_id) {
-          const { data: profile } = await supabase
+          console.log(`Fetching profile for user_id: ${payment.responsible_user_id}`)
+          
+          // Get name from profiles table
+          const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('full_name')
             .eq('id', payment.responsible_user_id)
             .single()
-          responsibleName = profile?.full_name
+          
+          if (!profileError) {
+            recipientName = profile?.full_name
+          }
+          
+          // Get email from auth.users table
+          const { data: userData, error: userError } = await supabase.auth.admin.getUserById(
+            payment.responsible_user_id
+          )
+          
+          console.log(`User result:`, { userData, userError })
+          
+          if (userError || !userData?.user?.email) {
+            console.error('Error fetching user email:', userError)
+            skipped++
+            console.log(`Payment ${payment.id} skipped - error fetching responsible person email`)
+            continue
+          }
+          
+          recipientEmail = userData.user.email
+          
+          console.log(`Final data:`, { recipientName, recipientEmail })
+        }
+
+        if (!recipientEmail) {
+          skipped++
+          console.log(`Payment ${payment.id} skipped - no responsible person email found for user_id: ${payment.responsible_user_id}`)
+          continue
         }
 
         // Send email
@@ -125,7 +158,7 @@ serve(async (req) => {
               amountPaid: payment.amount_paid,
               dueDate: payment.due_date,
               reminderType,
-              responsibleName,
+              responsibleName: recipientName,
               appUrl
             })
 
@@ -139,7 +172,7 @@ serve(async (req) => {
               },
               body: JSON.stringify({
                 from: 'EWPM System <noreply@trymaxmanagement.in>',
-                to: ['client@example.com'], // This should be replaced with actual client email
+                to: [recipientEmail],
                 subject,
                 html: emailHtml,
               }),

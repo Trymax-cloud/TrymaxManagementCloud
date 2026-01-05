@@ -127,18 +127,15 @@ export default function Payments() {
     <AppLayout title="Client Payments">
       <div className="space-y-6 animate-fade-in">
         {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-muted-foreground">
-            Track and manage client payment follow-ups
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Payments</h1>
+            <p className="text-muted-foreground">
+              Manage client payments and send reminders
+            </p>
+          </div>
           {isDirector && (
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">Payments</h1>
-                <p className="text-muted-foreground">
-                  Manage client payments and send reminders
-                </p>
-              </div>
+            <div className="flex gap-2">
               <Button 
                 onClick={handleSendReminders}
                 disabled={selectedPayments.length === 0 || sendPaymentReminders.isPending}
