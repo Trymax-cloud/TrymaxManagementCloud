@@ -234,14 +234,20 @@ export function useAllEmployeeDailySummaries(date: Date) {
       console.log("🔍 DEBUG: Assignments fetched:", assignments?.length, "assignments");
 
       // Fetch all daily summaries for this date (to get notes)
+      console.log("🔍 DEBUG: Query date string:", dateStr);
       const { data: dailySummaries, error: summariesError } = await supabase
         .from("daily_summaries")
         .select("*")
         .eq("date", dateStr);
 
-      if (summariesError) throw summariesError;
+      if (summariesError) {
+        console.log("🔍 DEBUG: Database query error:", summariesError);
+        throw summariesError;
+      }
       console.log("🔍 DEBUG: Daily summaries fetched:", dailySummaries?.length || 0, "summaries");
       console.log("🔍 DEBUG: Sample summary data:", dailySummaries?.[0]);
+      console.log("🔍 DEBUG: All summary data:", dailySummaries);
+      console.log("🔍 DEBUG: Looking for user_id matches in", dailySummaries?.length || 0, "summaries");
 
       const dateStart = startOfDay(date);
       const dateEnd = endOfDay(date);
@@ -292,6 +298,8 @@ export function useAllEmployeeDailySummaries(date: Date) {
           notes: employeeSummary?.notes || null,
         };
       });
+
+      console.log("🔍 DEBUG: Final summaries array:", summaries);
 
       // Sort by tasks completed descending
       return summaries.sort((a, b) => b.tasksCompleted - a.tasksCompleted);
