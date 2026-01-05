@@ -8,7 +8,6 @@ import { OverdueAssignments } from "@/components/dashboard/OverdueAssignments";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { CreateAssignmentModal } from "@/components/assignments/CreateAssignmentModal";
 import { AssignmentDetailModal } from "@/components/assignments/AssignmentDetailModal";
-import { RealtimeTest } from "@/components/debug/RealtimeTest";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAssignmentStats, useAssignments, useOverdueAssignments, type Assignment } from "@/hooks/useAssignments";
@@ -165,11 +164,6 @@ export default function Dashboard() {
               onCreateSelfAssignment={() => setShowCreateModal(true)}
               onAssignToOthers={() => setShowAssignModal(true)}
             />
-            
-            {/* Realtime Test Tool - Only in development */}
-            {import.meta.env.MODE === 'development' && (
-              <RealtimeTest />
-            )}
           </div>
         </div>
       </div>

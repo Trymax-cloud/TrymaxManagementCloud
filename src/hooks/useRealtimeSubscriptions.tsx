@@ -18,8 +18,6 @@ export function useRealtimeAssignments() {
   useEffect(() => {
     if (!user?.id) return;
 
-    console.log("Setting up assignments realtime subscription for user:", user.id);
-
     const channel = supabase
       .channel("assignments-realtime")
       .on(
@@ -30,8 +28,6 @@ export function useRealtimeAssignments() {
           table: "assignments",
         },
         (payload) => {
-          console.log("Assignment change received:", payload);
-          
           // Targeted invalidation instead of global invalidation
           // Only invalidate the most relevant queries
           queryClient.invalidateQueries({ queryKey: ["assignments-with-profiles"] });
@@ -55,7 +51,6 @@ export function useRealtimeAssignments() {
           // Show toast for relevant updates
           if (payload.eventType === "INSERT") {
             const newAssignment = payload.new as { assignee_id: string; title: string; priority: string };
-            console.log("New assignment created:", newAssignment);
             if (newAssignment.assignee_id === user.id) {
               toast({
                 title: "New Assignment",
@@ -76,7 +71,6 @@ export function useRealtimeAssignments() {
             }
           } else if (payload.eventType === "UPDATE") {
             const updated = payload.new as { assignee_id: string; status: string; title: string; due_date: string; priority: string; };
-            console.log("Assignment updated:", updated);
             if (updated.assignee_id === user.id && updated.status === "completed") {
               notificationManager.addNotificationEvent({
                 type: 'task-completed',
@@ -95,22 +89,12 @@ export function useRealtimeAssignments() {
                 });
               }
             }
-          } else if (payload.eventType === "DELETE") {
-            console.log("Assignment deleted:", payload.old);
           }
         }
       )
-      .subscribe((status) => {
-        console.log("Assignment subscription status:", status);
-        if (status === 'SUBSCRIBED') {
-          console.log("Successfully subscribed to assignments changes");
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error("Failed to subscribe to assignments changes");
-        }
-      });
+      .subscribe();
 
     return () => {
-      console.log("Cleaning up assignments realtime subscription");
       supabase.removeChannel(channel);
     };
   }, [user?.id, queryClient, toast]);
@@ -123,8 +107,6 @@ export function useRealtimeProjects() {
   useEffect(() => {
     if (!user?.id) return;
 
-    console.log("Setting up projects realtime subscription for user:", user.id);
-
     const channel = supabase
       .channel("projects-realtime")
       .on(
@@ -135,8 +117,6 @@ export function useRealtimeProjects() {
           table: "projects",
         },
         (payload) => {
-          console.log("Project change received:", payload);
-          
           // Invalidate all project-related queries for comprehensive refresh
           queryClient.invalidateQueries({ queryKey: ["projects"] });
           queryClient.invalidateQueries({ queryKey: ["active-projects"] });
@@ -147,29 +127,16 @@ export function useRealtimeProjects() {
 
           if (payload.eventType === "INSERT") {
             const project = payload.new as { name: string };
-            console.log("New project created:", project);
             toast({
               title: "New Project Created",
               description: `Project "${project.name}" has been created`,
             });
-          } else if (payload.eventType === "UPDATE") {
-            console.log("Project updated:", payload.new);
-          } else if (payload.eventType === "DELETE") {
-            console.log("Project deleted:", payload.old);
           }
         }
       )
-      .subscribe((status) => {
-        console.log("Project subscription status:", status);
-        if (status === 'SUBSCRIBED') {
-          console.log("Successfully subscribed to projects changes");
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error("Failed to subscribe to projects changes");
-        }
-      });
+      .subscribe();
 
     return () => {
-      console.log("Cleaning up projects realtime subscription");
       supabase.removeChannel(channel);
     };
   }, [user?.id, queryClient]);
@@ -182,8 +149,6 @@ export function useRealtimePayments() {
   useEffect(() => {
     if (!user?.id) return;
 
-    console.log("Setting up payments realtime subscription for user:", user.id);
-
     const channel = supabase
       .channel("payments-realtime")
       .on(
@@ -194,8 +159,6 @@ export function useRealtimePayments() {
           table: "client_payments",
         },
         (payload) => {
-          console.log("Payment change received:", payload);
-          
           // Invalidate all payment-related queries for comprehensive refresh
           queryClient.invalidateQueries({ queryKey: ["client_payments"] });
           queryClient.invalidateQueries({ queryKey: ["payments"] });
@@ -213,7 +176,6 @@ export function useRealtimePayments() {
               client_name: string; 
               responsible_user_id: string;
             };
-            console.log("New payment created:", payment);
             toast({
               title: "New Payment Added",
               description: `Payment for ${payment.client_name} has been added`,
@@ -224,29 +186,18 @@ export function useRealtimePayments() {
               client_name: string; 
               status: string 
             };
-            console.log("Payment updated:", payment);
             if (payment.responsible_user_id === user.id && payment.status === "paid") {
               toast({
                 title: "Payment Received",
                 description: `Payment from ${payment.client_name} marked as paid`,
               });
             }
-          } else if (payload.eventType === "DELETE") {
-            console.log("Payment deleted:", payload.old);
           }
         }
       )
-      .subscribe((status) => {
-        console.log("Payment subscription status:", status);
-        if (status === 'SUBSCRIBED') {
-          console.log("Successfully subscribed to payments changes");
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error("Failed to subscribe to payments changes");
-        }
-      });
+      .subscribe();
 
     return () => {
-      console.log("Cleaning up payments realtime subscription");
       supabase.removeChannel(channel);
     };
   }, [user?.id, queryClient]);
