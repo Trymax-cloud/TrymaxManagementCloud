@@ -183,8 +183,6 @@ export function useDeleteMeeting() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      console.log('Deleting meeting with RPC:', id);
-
       // Use RPC for meeting deletion - handles RLS properly
       const { data, error } = await supabase.rpc('delete_meeting', {
         p_meeting_id: id

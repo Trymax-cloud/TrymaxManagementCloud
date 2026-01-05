@@ -33,17 +33,14 @@ export default function Meetings() {
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
 
   const handleDelete = (meeting: Meeting) => {
-    console.log('Delete button clicked for meeting:', meeting.id);
     setSelectedMeeting(meeting);
     setDeleteDialogOpen(true);
   };
 
   const confirmDelete = async () => {
     if (selectedMeeting) {
-      console.log('Confirming delete for meeting:', selectedMeeting.id);
       try {
         await deleteMeeting.mutateAsync(selectedMeeting.id);
-        console.log('Delete successful');
         setDeleteDialogOpen(false);
         setSelectedMeeting(null);
       } catch (error) {
@@ -121,8 +118,6 @@ export default function Meetings() {
                   {groupedMeetings[date].map(meeting => {
                     const status = getMeetingStatus(meeting);
                     const canEdit = meeting.created_by === user?.id || isDirector;
-                    
-                    console.log('Meeting:', meeting.id, 'CanEdit:', canEdit, 'User ID:', user?.id, 'Creator:', meeting.created_by, 'IsDirector:', isDirector);
                     
                     return (
                       <Card 
