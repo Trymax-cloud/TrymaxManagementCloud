@@ -11,6 +11,7 @@ import { CalendarDays, Clock, Plus, Users, Trash2, Edit } from 'lucide-react';
 import { format, isToday, isTomorrow, isPast, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { CreateMeetingModal } from '@/components/meetings/CreateMeetingModal';
+import { DataState } from '@/components/ui/DataState';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -87,35 +88,40 @@ export default function Meetings() {
           </Button>
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <LoadingSpinner size="lg" />
-          </div>
-        ) : meetings?.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <CalendarDays className="h-16 w-16 text-muted-foreground/50 mb-4" />
-              <h3 className="text-lg font-medium">No meetings scheduled</h3>
-              <p className="text-muted-foreground mb-4">Create your first meeting to get started</p>
-              <Button onClick={() => setCreateModalOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Schedule Meeting
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-6">
-            {sortedDates.map(date => (
-              <div key={date}>
-                <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                  <CalendarDays className="h-5 w-5 text-primary" />
-                  {getMeetingDateLabel(date)}
-                  <span className="text-sm font-normal text-muted-foreground">
-                    ({format(parseISO(date), 'MMMM d, yyyy')})
-                  </span>
-                </h2>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {groupedMeetings[date].map(meeting => {
+        <DataState
+          data={meetings}
+          isLoading={isLoading}
+          error={null}
+          emptyMessage="No meetings scheduled"
+          loadingMessage="Loading meetings..."
+        >
+          {(meetingsData) => (
+            <>
+              {meetingsData.length === 0 ? (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <CalendarDays className="h-16 w-16 text-muted-foreground/50 mb-4" />
+                    <h3 className="text-lg font-medium">No meetings scheduled</h3>
+                    <p className="text-muted-foreground mb-4">Create your first meeting to get started</p>
+                    <Button onClick={() => setCreateModalOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Schedule Meeting
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-6">
+                  {sortedDates.map(date => (
+                    <div key={date}>
+                      <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                        <CalendarDays className="h-5 w-5 text-primary" />
+                        {getMeetingDateLabel(date)}
+                        <span className="text-sm font-normal text-muted-foreground">
+                          ({format(parseISO(date), 'MMMM d, yyyy')})
+                        </span>
+                      </h2>
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {groupedMeetings[date].map(meeting => {
                     const status = getMeetingStatus(meeting);
                     const canEdit = meeting.created_by === user?.id || isDirector;
                     
@@ -200,6 +206,9 @@ export default function Meetings() {
             ))}
           </div>
         )}
+            </>
+          )}
+        </DataState>
       </div>
 
       <CreateMeetingModal 
