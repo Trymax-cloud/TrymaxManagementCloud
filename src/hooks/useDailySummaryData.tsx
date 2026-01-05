@@ -239,6 +239,7 @@ export function useAllEmployeeDailySummaries(date: Date) {
       console.log("🔍 DEBUG: User role:", user?.user_metadata?.role);
       
       // Try without date filter first to see if any data exists
+      console.log("🔍 DEBUG: Checking all daily summaries without date filter...");
       const { data: allDailySummaries, error: allSummariesError } = await supabase
         .from("daily_summaries")
         .select("*");
@@ -248,9 +249,13 @@ export function useAllEmployeeDailySummaries(date: Date) {
         throw allSummariesError;
       }
       console.log("🔍 DEBUG: All daily summaries in database:", allDailySummaries?.length || 0);
-      console.log("🔍 DEBUG: Sample all summary data:", allDailySummaries?.[0]);
+      if (allDailySummaries && allDailySummaries.length > 0) {
+        console.log("🔍 DEBUG: Sample summary data from all:", allDailySummaries[0]);
+        console.log("🔍 DEBUG: Available dates in database:", allDailySummaries.map(s => s.date));
+      }
       
       // Now try with date filter
+      console.log("🔍 DEBUG: Now filtering by date:", dateStr);
       const { data: dailySummaries, error: summariesError } = await supabase
         .from("daily_summaries")
         .select("*")
