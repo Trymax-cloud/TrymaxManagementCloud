@@ -15,6 +15,12 @@ serve(async (req) => {
   try {
     console.log('Payment reminders function started')
     
+    // Parse request body
+    const body = await req.json()
+    const automatic = body.automatic !== false // Default to true unless explicitly false
+    
+    console.log('Reminder mode:', automatic ? 'automatic' : 'manual')
+    
     // Initialize Supabase client with service role key
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -78,21 +84,21 @@ serve(async (req) => {
         console.log(`Processing payment ${payment.id}: due_date=${payment.due_date}, dueDate=${dueDate.toDateString()}, today=${today.toDateString()}, tomorrow=${tomorrow.toDateString()}, threeDaysFromNow=${threeDaysFromNow.toDateString()}`)
 
         // Check 72 HOURS REMINDER
-        if (dueDate.toDateString() === threeDaysFromNow.toDateString() && !payment.last_72h_reminder_sent) {
+        if (dueDate.toDateString() === threeDaysFromNow.toDateString() && (!automatic || !payment.last_72h_reminder_sent)) {
           reminderType = '72_hours'
           shouldSend = true
           updateField = 'last_72h_reminder_sent'
           upcoming_72h++
         }
         // Check 24 HOURS REMINDER
-        else if (dueDate.toDateString() === tomorrow.toDateString() && !payment.last_24h_reminder_sent) {
+        else if (dueDate.toDateString() === tomorrow.toDateString() && (!automatic || !payment.last_24h_reminder_sent)) {
           reminderType = '24_hours'
           shouldSend = true
           updateField = 'last_24h_reminder_sent'
           upcoming_24h++
         }
         // Check OVERDUE REMINDER
-        else if (dueDate < today && !payment.last_overdue_reminder_sent) {
+        else if (dueDate < today && (!automatic || !payment.last_overdue_reminder_sent)) {
           reminderType = 'overdue'
           shouldSend = true
           updateField = 'last_overdue_reminder_sent'
@@ -324,9 +330,9 @@ function generatePaymentReminderEmail(data: {
           <p>${message}</p>
           
           <div class="payment-details">
-            <p><strong>Invoice Amount:</strong> $${invoiceAmount.toFixed(2)}</p>
-            <p><strong>Amount Paid:</strong> $${amountPaid.toFixed(2)}</p>
-            <p class="amount"><strong>Balance Due:</strong> $${balance.toFixed(2)}</p>
+            <p><strong>Invoice Amount:</strong> ₹${invoiceAmount.toFixed(2)}</p>
+            <p><strong>Amount Paid:</strong> ₹${amountPaid.toFixed(2)}</p>
+            <p class="amount"><strong>Balance Due:</strong> ₹${balance.toFixed(2)}</p>
             <p class="due-date ${reminderType === 'overdue' ? 'overdue' : ''}">
               <strong>Due Date:</strong> ${due.toLocaleDateString('en-US', { 
                 weekday: 'long', 

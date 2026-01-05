@@ -12,8 +12,10 @@ interface PaymentReminderResult {
 
 export function useSendPaymentReminders() {
   return useMutation({
-    mutationFn: async (): Promise<PaymentReminderResult> => {
-      const { data, error } = await supabase.functions.invoke('send-payment-reminders');
+    mutationFn: async (automatic: boolean = true): Promise<PaymentReminderResult> => {
+      const { data, error } = await supabase.functions.invoke('send-payment-reminders', {
+        body: { automatic }
+      });
 
       if (error) throw error;
       return data as PaymentReminderResult;

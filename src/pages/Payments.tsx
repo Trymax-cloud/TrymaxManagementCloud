@@ -78,7 +78,7 @@ export default function Payments() {
     }
 
     try {
-      const result = await sendPaymentReminders.mutateAsync();
+      const result = await sendPaymentReminders.mutateAsync(false); // Manual reminder
       console.log('Payment reminders result:', result);
       toast.success(`Payment reminders processed: ${result.sent} sent, ${result.skipped} skipped`);
       setSelectedPayments([]);
