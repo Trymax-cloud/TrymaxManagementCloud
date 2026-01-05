@@ -34,8 +34,8 @@ export function useRealtimeAssignments() {
           
           // Targeted invalidation instead of global invalidation
           // Only invalidate the most relevant queries
-          queryClient.invalidateQueries({ queryKey: ["assignments"] });
-          queryClient.invalidateQueries({ queryKey: ["my-assignments"] });
+          queryClient.invalidateQueries({ queryKey: ["assignments-with-profiles"] });
+          queryClient.invalidateQueries({ queryKey: ["my-assignments-with-profiles"] });
           
           // Only invalidate profile queries if assignment assignee changed
           if (payload.eventType === "UPDATE" && 
@@ -48,7 +48,7 @@ export function useRealtimeAssignments() {
           if (payload.eventType === "UPDATE" && 
               payload.old?.status !== payload.new?.status) {
             queryClient.invalidateQueries({ queryKey: ["assignment-stats"] });
-            queryClient.invalidateQueries({ queryKey: ["overdue-assignments"] });
+            queryClient.invalidateQueries({ queryKey: ["overdue-assignments-with-profiles"] });
             queryClient.invalidateQueries({ queryKey: ["daily-summary"] });
           }
 

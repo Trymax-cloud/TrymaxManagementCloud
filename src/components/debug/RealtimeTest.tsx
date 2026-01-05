@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 
 export function RealtimeTest() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [logs, setLogs] = useState<string[]>([]);
   const [isConnected, setIsConnected] = useState(false);
 
@@ -82,6 +84,13 @@ export function RealtimeTest() {
     }
   };
 
+  const testInvalidation = () => {
+    addLog("🔄 Testing query invalidation...");
+    queryClient.invalidateQueries({ queryKey: ["assignments-with-profiles"] });
+    addLog("✅ Invalidated assignments-with-profiles queries");
+    toast.success("Query invalidation test completed");
+  };
+
   const clearLogs = () => {
     setLogs([]);
   };
@@ -98,6 +107,9 @@ export function RealtimeTest() {
         <div className="flex gap-2">
           <Button onClick={testInsert} disabled={!isConnected}>
             Test Insert Assignment
+          </Button>
+          <Button onClick={testInvalidation} variant="outline">
+            Test Query Invalidation
           </Button>
           <Button variant="outline" onClick={clearLogs}>
             Clear Logs
