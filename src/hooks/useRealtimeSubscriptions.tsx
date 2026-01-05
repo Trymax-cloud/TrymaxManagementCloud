@@ -329,11 +329,11 @@ export function useRealtimeDailySummaries() {
           table: "daily_summaries",
         },
         (payload) => {
-          console.log("Daily Summary change:", payload);
-          
           // Invalidate daily summary related queries
           queryClient.invalidateQueries({ queryKey: ["daily-summary"] });
           queryClient.invalidateQueries({ queryKey: ["daily-summaries"] });
+          queryClient.invalidateQueries({ queryKey: ["all-employee-summaries"] });
+          queryClient.invalidateQueries({ queryKey: ["daily-summary-data"] });
           queryClient.invalidateQueries({ queryKey: ["analytics"] });
           queryClient.invalidateQueries({ queryKey: ["analytics-summary"] });
 
