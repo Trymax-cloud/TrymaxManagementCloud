@@ -215,7 +215,6 @@ export function useAllEmployeeDailySummaries(date: Date) {
     queryKey: ["all-employee-summaries", format(date, "yyyy-MM-dd")],
     queryFn: async () => {
       const dateStr = format(date, "yyyy-MM-dd");
-      console.log("🔍 DEBUG: Fetching all employee summaries for date:", dateStr);
 
       // Fetch all profiles
       const { data: profiles, error: profilesError } = await supabase
@@ -303,8 +302,12 @@ export function useAllEmployeeDailySummaries(date: Date) {
         };
       });
 
-      // Sort by tasks completed descending
-      return summaries.sort((a, b) => b.tasksCompleted - a.tasksCompleted);
+      // Sort: Directors first, then by tasks completed
+      return summaries.sort((a, b) => {
+        if (a.userRole === 'director' && b.userRole !== 'director') return -1;
+        if (b.userRole === 'director' && a.userRole !== 'director') return 1;
+        return b.tasksCompleted - a.tasksCompleted;
+      });
     },
     enabled: !!user,
     staleTime: 0, // Always fetch fresh data

@@ -59,13 +59,16 @@ export default function DailySummary() {
     return completionDate >= dateStart && completionDate <= dateEnd;
   }) || [];
 
-  // Clean stats - no time tracking, no duplicates
+  // Combine due today + worked on today for accurate counts
+  const allRelevantAssignments = [...new Set([...todayAssignments, ...completedToday])];
+
+  // Clean stats - using combined assignments for accurate in_progress/pending/emergency counts
   const stats = {
     dueToday: todayAssignments.length,
     completed: completedToday.length,
-    inProgress: todayAssignments.filter(a => a.status === "in_progress").length,
-    pending: todayAssignments.filter(a => a.status === "not_started").length,
-    emergency: todayAssignments.filter(a => a.priority === "emergency").length,
+    inProgress: allRelevantAssignments.filter(a => a.status === "in_progress").length,
+    pending: allRelevantAssignments.filter(a => a.status === "not_started").length,
+    emergency: allRelevantAssignments.filter(a => a.priority === "emergency").length,
     completionRate: todayAssignments.length > 0 ? Math.round((completedToday.length / todayAssignments.length) * 100) : 0,
   };
 
