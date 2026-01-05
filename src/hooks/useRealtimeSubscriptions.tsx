@@ -329,13 +329,22 @@ export function useRealtimeDailySummaries() {
           table: "daily_summaries",
         },
         (payload) => {
+          // Get the date from the payload to invalidate specific date queries
+          const summaryDate = (payload.new as any)?.date || (payload.old as any)?.date;
+          
           // Invalidate daily summary related queries
           queryClient.invalidateQueries({ queryKey: ["daily-summary"] });
           queryClient.invalidateQueries({ queryKey: ["daily-summaries"] });
-          queryClient.invalidateQueries({ queryKey: ["all-employee-summaries"] });
+          queryClient.invalidateQueries({ queryKey: ["all-employee-summaries"] }); // This will invalidate all date-specific queries
           queryClient.invalidateQueries({ queryKey: ["daily-summary-data"] });
           queryClient.invalidateQueries({ queryKey: ["analytics"] });
           queryClient.invalidateQueries({ queryKey: ["analytics-summary"] });
+
+          // Also invalidate specific date queries if we have the date
+          if (summaryDate) {
+            queryClient.invalidateQueries({ queryKey: ["all-employee-summaries", summaryDate] });
+            queryClient.invalidateQueries({ queryKey: ["daily-summary-data", summaryDate] });
+          }
 
           if (payload.eventType === "INSERT") {
             const summary = payload.new as { created_date: string; created_by: string };
@@ -343,6 +352,14 @@ export function useRealtimeDailySummaries() {
               toast({
                 title: "Daily Summary Created",
                 description: `Daily summary for ${new Date(summary.created_date).toLocaleDateString()} has been created`,
+              });
+            }
+          } else if (payload.eventType === "UPDATE") {
+            const summary = payload.new as { date: string; notes: string; user_id: string };
+            if (summary.user_id !== user.id) {
+              toast({
+                title: "Employee Daily Summary Updated",
+                description: `${summary.user_id === user.id ? "Your" : "An employee's"} daily summary for ${new Date(summary.date).toLocaleDateString()} has been updated`,
               });
             }
           }
