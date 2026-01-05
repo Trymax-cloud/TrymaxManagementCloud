@@ -158,15 +158,72 @@ export default function DailySummary() {
             </CardContent>
           </Card>
 
-          {/* Employee Summary */}
+          {/* Director's Own Summary */}
+          <Card className="border-0 shadow-soft">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center justify-between">
+                <span>My Daily Summary</span>
+                {hasUnsavedNotes && (
+                  <Badge variant="outline" className="text-xs">Unsaved</Badge>
+                )}
+              </CardTitle>
+              <CardDescription>Your personal daily report for {format(selectedDate, "MMMM d, yyyy")}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Director's Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <p className="text-lg font-bold text-green-600">{stats.completed}</p>
+                  <p className="text-xs text-muted-foreground">Completed</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-bold text-blue-600">{stats.inProgress}</p>
+                  <p className="text-xs text-muted-foreground">In Progress</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-bold text-amber-600">{stats.pending}</p>
+                  <p className="text-xs text-muted-foreground">Pending</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-bold text-red-600">{stats.emergency}</p>
+                  <p className="text-xs text-muted-foreground">Emergency</p>
+                </div>
+              </div>
+              
+              {/* Director's Notes */}
+              <div className="space-y-3">
+                <p className="font-medium">Daily Notes</p>
+                <Textarea
+                  placeholder="Write your notes for today..."
+                  value={notes}
+                  onChange={(e) => handleNotesChange(e.target.value)}
+                  className="min-h-[100px] resize-none"
+                />
+                <Button 
+                  onClick={handleSaveNotes} 
+                  disabled={saveSummary.isPending || !hasUnsavedNotes}
+                  className="gap-2"
+                >
+                  {saveSummary.isPending ? (
+                    <LoadingSpinner size="sm" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Save Notes
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Team Daily Reports */}
           <Card className="border-0 shadow-soft">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Employee Work Summary
+                Team Daily Reports
               </CardTitle>
               <CardDescription>
-                Work report for {format(selectedDate, "MMMM d, yyyy")}
+                Work report for all team members on {format(selectedDate, "MMMM d, yyyy")}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -184,6 +241,7 @@ export default function DailySummary() {
                   {employeeSummaries.map((summary) => {
                     const isExpanded = expandedEmployees.has(summary.userId);
                     const hasNotes = !!summary.notes;
+                    const isDirector = summary.userRole === 'director';
                     
                     return (
                       <div key={summary.userId} className="rounded-lg border bg-card overflow-hidden">
@@ -197,6 +255,9 @@ export default function DailySummary() {
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
                               <p className="font-medium">{summary.userName}</p>
+                              {isDirector && (
+                                <Badge variant="default" className="text-xs bg-purple-100 text-purple-800 border-purple-200">Director</Badge>
+                              )}
                               {hasNotes && (
                                 <Badge variant="secondary" className="text-xs">Notes</Badge>
                               )}
