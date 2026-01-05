@@ -89,6 +89,21 @@ export function useDeletePayment() {
       console.log("Payment deleted successfully:", paymentId);
       return paymentId;
     },
+    onMutate: async (paymentId) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["client_payments"] });
+      
+      // Snapshot the previous value
+      const previousPayments = queryClient.getQueryData(["client_payments"]);
+      
+      // Optimistically remove the payment from cache
+      queryClient.setQueryData(["client_payments"], (old: any) => {
+        if (!old) return old;
+        return old.filter((payment: any) => payment.id !== paymentId);
+      });
+      
+      return { previousPayments };
+    },
     onSuccess: (paymentId) => {
       console.log("Delete mutation success for payment:", paymentId);
       toast({
@@ -96,12 +111,17 @@ export function useDeletePayment() {
         description: "Payment has been removed successfully",
       });
 
-      // Targeted invalidation instead of global refetch
+      // Invalidate to sync with server (but won't cause visible flicker due to optimistic update)
       queryClient.invalidateQueries({ queryKey: ["client_payments"] });
-      // Don't use refetchQueries - it causes unnecessary network requests
     },
-    onError: (error) => {
+    onError: (error, paymentId, context) => {
       console.error("Delete mutation error:", error);
+      
+      // Rollback on error
+      if (context?.previousPayments) {
+        queryClient.setQueryData(["client_payments"], context.previousPayments);
+      }
+      
       toast({
         title: "Failed to Delete Payment",
         description: error.message || "An error occurred while deleting the payment",

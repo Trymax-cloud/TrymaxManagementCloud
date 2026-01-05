@@ -137,9 +137,17 @@ export default function Payments() {
           {isDirector && (
             <div className="flex gap-2">
               <Button 
+                onClick={() => setCreateModalOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Create Payment
+              </Button>
+              <Button 
                 onClick={handleSendReminders}
                 disabled={selectedPayments.length === 0 || sendPaymentReminders.isPending}
                 className="flex items-center gap-2"
+                variant="outline"
               >
                 <Mail className="h-4 w-4" />
                 {sendPaymentReminders.isPending ? "Sending..." : "Send Reminders"}
