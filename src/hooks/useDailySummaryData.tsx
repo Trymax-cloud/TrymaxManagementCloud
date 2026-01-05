@@ -217,17 +217,23 @@ export function useAllEmployeeDailySummaries(date: Date) {
       const dateStr = format(date, "yyyy-MM-dd");
       console.log("🔍 DEBUG: Fetching all employee summaries for date:", dateStr);
 
-      // Fetch all profiles with roles
+      // Fetch all profiles
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select(`
           id, 
           name, 
-          email,
-          user_roles!inner(role)
+          email
         `);
 
       if (profilesError) throw profilesError;
+      
+      // Fetch user roles separately
+      const { data: userRoles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("user_id, role");
+
+      if (rolesError) throw rolesError;
       
       // Fetch all assignments for this date
       const { data: assignments, error: assignmentsError } = await supabase
@@ -274,10 +280,9 @@ export function useAllEmployeeDailySummaries(date: Date) {
           (s) => s.user_id === profile.id
         );
 
-        // Find the employee's profile with role
-        const userProfile = profiles?.find(p => p.id === profile.id);
-        const userRoles = (userProfile?.user_roles as any[]) || [];
-        const userRole = userRoles.length > 0 ? userRoles[0].role : 'employee';
+        // Find the employee's role from the separate userRoles data
+        const userRoleData = userRoles?.find(r => r.user_id === profile.id);
+        const userRole = userRoleData?.role || 'employee';
 
         return {
           userId: profile.id,
@@ -287,9 +292,9 @@ export function useAllEmployeeDailySummaries(date: Date) {
           date,
           tasksCompleted: assignmentsCompleted.length,
           tasksDue: assignmentsDue.length,
-          tasksInProgress: (assignmentsInProgress?.length || 0),
-          tasksPending: (assignmentsPending?.length || 0),
-          emergencyTasks: (emergencyTasks?.length || 0),
+          tasksInProgress: assignmentsInProgress || 0,
+          tasksPending: assignmentsPending || 0,
+          emergencyTasks: emergencyTasks || 0,
           completionRate:
             assignmentsDue.length > 0
               ? Math.round((assignmentsCompleted.length / assignmentsDue.length) * 100)
