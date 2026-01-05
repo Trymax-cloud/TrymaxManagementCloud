@@ -279,7 +279,31 @@ export function useAllEmployeeDailySummaries(date: Date) {
           (s) => s.user_id === profile.id
         );
 
-        console.log("🔍 DEBUG: Employee:", profile.name, "Summary found:", !!employeeSummary, "Notes:", employeeSummary?.notes || 'null');
+        // If no daily summary exists, try to get notes from individual assignments
+        let employeeNotes = employeeSummary?.notes;
+        
+        if (!employeeNotes) {
+          console.log("🔍 DEBUG: No daily summary found for", profile.name, "- checking individual assignments");
+          
+          // Look for any assignment notes for this employee on this date
+          const employeeAssignments = (assignments as Assignment[]).filter(
+            (a) => a.assignee_id === profile.id
+          );
+          
+          // Check if any assignment has notes/description for this date
+          const assignmentWithNotes = employeeAssignments.find(a => {
+            const assignmentDate = new Date(a.created_date);
+            return assignmentDate >= dateStart && assignmentDate <= dateEnd && 
+                   (a.description && a.description.trim() !== '');
+          });
+          
+          if (assignmentWithNotes?.description) {
+            employeeNotes = assignmentWithNotes.description;
+            console.log("🔍 DEBUG: Found assignment with notes for", profile.name, ":", assignmentWithNotes.description);
+          }
+        }
+
+        console.log("🔍 DEBUG: Employee:", profile.name, "Summary found:", !!employeeSummary, "Notes:", employeeNotes || 'null');
 
         return {
           userId: profile.id,
@@ -288,14 +312,14 @@ export function useAllEmployeeDailySummaries(date: Date) {
           date,
           tasksCompleted: assignmentsCompleted.length,
           tasksDue: assignmentsDue.length,
-          tasksInProgress: assignmentsInProgress,
+          tasksInProgress: assignmentsInProgress?.length || 0,
           tasksPending: assignmentsPending,
-          emergencyTasks: emergencyTasks.length,
+          emergencyTasks: emergencyTasks?.length || 0,
           completionRate:
             assignmentsDue.length > 0
               ? Math.round((assignmentsCompleted.length / assignmentsDue.length) * 100)
               : 0,
-          notes: employeeSummary?.notes || null,
+          notes: employeeNotes || null,
         };
       });
 
