@@ -8,10 +8,12 @@ import { OverdueAssignments } from "@/components/dashboard/OverdueAssignments";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { CreateAssignmentModal } from "@/components/assignments/CreateAssignmentModal";
 import { AssignmentDetailModal } from "@/components/assignments/AssignmentDetailModal";
+import { RealtimeTest } from "@/components/debug/RealtimeTest";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAssignmentStats, useAssignments, useOverdueAssignments, type Assignment } from "@/hooks/useAssignments";
 import { useAssignmentsWithProfiles, useOverdueAssignmentsWithProfiles } from "@/hooks/useAssignmentsWithProfiles";
+import { type AssignmentWithRelations } from "@/types/assignment-relations";
 import { useProjects } from "@/hooks/useProjects";
 import { useProfiles } from "@/hooks/useProfiles";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -27,9 +29,26 @@ export default function Dashboard() {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [selectedAssignment, setSelectedAssignment] = useState<AssignmentWithRelations | null>(null);
 
   const userName = user?.user_metadata?.name || "there";
+
+  // Wrapper to handle assignment type conversion
+  const handleAssignmentClick = (assignment: Assignment) => {
+    // Find the matching assignment with relations from allAssignments
+    const assignmentWithRelations = allAssignments?.find(a => a.id === assignment.id);
+    if (assignmentWithRelations) {
+      setSelectedAssignment(assignmentWithRelations);
+    } else {
+      // Fallback - create a minimal AssignmentWithRelations object
+      setSelectedAssignment({
+        ...assignment,
+        creator: null,
+        assignee: null,
+        project: null,
+      });
+    }
+  };
 
   // Director stats
   const directorStats = {
@@ -133,10 +152,10 @@ export default function Dashboard() {
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
             {/* Overdue Assignments Alert */}
-            <OverdueAssignments onAssignmentClick={setSelectedAssignment} />
+            <OverdueAssignments onAssignmentClick={handleAssignmentClick} />
             
             {/* Today's Assignments */}
-            <TodayAssignments onAssignmentClick={setSelectedAssignment} />
+            <TodayAssignments onAssignmentClick={handleAssignmentClick} />
           </div>
 
           {/* Quick Actions Sidebar */}
@@ -146,6 +165,11 @@ export default function Dashboard() {
               onCreateSelfAssignment={() => setShowCreateModal(true)}
               onAssignToOthers={() => setShowAssignModal(true)}
             />
+            
+            {/* Realtime Test Tool - Only in development */}
+            {import.meta.env.MODE === 'development' && (
+              <RealtimeTest />
+            )}
           </div>
         </div>
       </div>
