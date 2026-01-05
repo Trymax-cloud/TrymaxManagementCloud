@@ -17,6 +17,7 @@ import { useAllUsers } from '@/hooks/useSimpleUsers';
 import { useAuth } from '@/hooks/useAuth';
 import { X, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 
 interface CreateMeetingModalProps {
   open: boolean;
@@ -65,11 +66,23 @@ export function CreateMeetingModal({ open, onOpenChange }: CreateMeetingModalPro
         meeting_time: meetingTime,
         participant_ids: selectedParticipants
       });
+      
+      // Success: Reset form and close modal
+      toast({
+        title: 'Meeting created successfully',
+        description: 'Your meeting has been scheduled.'
+      });
       resetForm();
       onOpenChange(false);
     } catch (error) {
       console.error('Meeting creation failed:', error);
-      // Error will be handled by the mutation's error handling
+      // Error is handled by mutation's error handling
+      // Modal stays open for user to retry
+      toast({
+        title: 'Failed to create meeting',
+        description: error instanceof Error ? error.message : 'An error occurred',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -101,6 +114,7 @@ export function CreateMeetingModal({ open, onOpenChange }: CreateMeetingModalPro
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Meeting title"
               required
+              disabled={createMeeting.isPending}
             />
           </div>
 
@@ -114,6 +128,7 @@ export function CreateMeetingModal({ open, onOpenChange }: CreateMeetingModalPro
                 onChange={(e) => setMeetingDate(e.target.value)}
                 min={new Date().toISOString().split('T')[0]}
                 required
+                disabled={createMeeting.isPending}
               />
             </div>
             <div className="space-y-2">
@@ -124,6 +139,7 @@ export function CreateMeetingModal({ open, onOpenChange }: CreateMeetingModalPro
                 value={meetingTime}
                 onChange={(e) => setMeetingTime(e.target.value)}
                 required
+                disabled={createMeeting.isPending}
               />
             </div>
           </div>
@@ -136,6 +152,7 @@ export function CreateMeetingModal({ open, onOpenChange }: CreateMeetingModalPro
               onChange={(e) => setNote(e.target.value)}
               placeholder="Add meeting notes or agenda..."
               rows={3}
+              disabled={createMeeting.isPending}
             />
           </div>
 
@@ -152,6 +169,7 @@ export function CreateMeetingModal({ open, onOpenChange }: CreateMeetingModalPro
                         type="button"
                         onClick={() => toggleParticipant(id)}
                         className="ml-1 hover:text-destructive"
+                        disabled={createMeeting.isPending}
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -167,11 +185,13 @@ export function CreateMeetingModal({ open, onOpenChange }: CreateMeetingModalPro
                     key={profile.id}
                     type="button"
                     onClick={() => toggleParticipant(profile.id)}
+                    disabled={createMeeting.isPending}
                     className={cn(
                       "w-full flex items-center gap-3 p-2 rounded-md text-left transition-colors",
                       selectedParticipants.includes(profile.id)
                         ? "bg-primary/10 border border-primary/20"
-                        : "hover:bg-accent"
+                        : "hover:bg-accent",
+                      createMeeting.isPending && "opacity-50 cursor-not-allowed"
                     )}
                   >
                     <div className={cn(
@@ -202,10 +222,18 @@ export function CreateMeetingModal({ open, onOpenChange }: CreateMeetingModalPro
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={handleCancel}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={handleCancel}
+              disabled={createMeeting.isPending}
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={createMeeting.isPending}>
+            <Button 
+              type="submit" 
+              disabled={createMeeting.isPending || !title.trim() || !meetingDate || !meetingTime}
+            >
               {createMeeting.isPending ? 'Creating...' : 'Create Meeting'}
             </Button>
           </div>

@@ -112,50 +112,37 @@ export function useCreateMeeting() {
 
   return useMutation({
     mutationFn: async (input: CreateMeetingInput) => {
+      // Check authenticated user
       if (!user?.id) throw new Error('Not authenticated');
 
-      // Create meeting first
-      const { data: meeting, error: meetingError } = await supabase
-        .from('meetings')
-        .insert({
-          title: input.title,
-          note: input.note || null,
-          meeting_date: input.meeting_date,
-          meeting_time: input.meeting_time,
-          created_by: user.id
-        })
-        .select()
-        .single();
+      console.log('Creating meeting with RPC:', input);
 
-      if (meetingError) throw meetingError;
-      if (!meeting) throw new Error('Failed to create meeting');
+      // Call RPC for atomic meeting creation - ONLY RPC, no direct inserts
+      const { data, error } = await supabase.rpc('create_meeting_with_participants', {
+        p_meeting_title: input.title,
+        p_meeting_note: input.note ?? null,
+        p_meeting_date: input.meeting_date,
+        p_meeting_time: input.meeting_time,
+        p_participant_ids: input.participant_ids ?? []
+      });
 
-      // Add all participants including creator
-      const allParticipantIds = [...new Set([...input.participant_ids, user.id])];
-      
-      const participantsToInsert = allParticipantIds.map(userId => ({
-        meeting_id: meeting.id,
-        user_id: userId
-      }));
-
-      const { error: participantsError } = await supabase
-        .from('meeting_participants')
-        .insert(participantsToInsert);
-
-      if (participantsError) {
-        // Clean up the meeting if participants fail
-        await supabase.from('meetings').delete().eq('id', meeting.id);
-        throw participantsError;
+      if (error) {
+        console.error('Meeting creation failed', error);
+        throw new Error(error.message || 'Failed to create meeting');
       }
 
-      return meeting;
+      if (!data) throw new Error('Failed to create meeting');
+
+      return data;
     },
     onSuccess: () => {
+      // Refetch meetings list on success
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
       queryClient.invalidateQueries({ queryKey: ['user-meetings'] });
     },
     onError: (error) => {
-      console.error('Meeting creation failed:', error);
+      // Show RPC error message directly
+      console.error('Meeting creation failed', error);
     }
   });
 }
@@ -196,19 +183,7 @@ export function useDeleteMeeting() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // First delete all participants for this meeting
-      const { error: participantsError } = await supabase
-        .from('meeting_participants')
-        .delete()
-        .eq('meeting_id', id);
-
-      if (participantsError) {
-        console.error('Error deleting meeting participants:', participantsError);
-        // Continue with meeting deletion even if participant deletion fails
-        // since the database should handle cascade deletion
-      }
-
-      // Then delete the meeting
+      // Simple delete - cascade should handle participants
       const { error } = await supabase
         .from('meetings')
         .delete()

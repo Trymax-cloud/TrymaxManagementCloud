@@ -545,6 +545,25 @@ export type Database = {
         Args: { _meeting_id: string; _user_id: string }
         Returns: boolean
       }
+      create_meeting_with_participants: {
+        Args: {
+          p_meeting_title: string
+          p_meeting_note: string | null
+          p_meeting_date: string
+          p_meeting_time: string
+          p_participant_ids: string[]
+        }
+        Returns: {
+          id: string
+          title: string
+          note: string | null
+          meeting_date: string
+          meeting_time: string
+          created_by: string
+          created_at: string
+          updated_at: string
+        }
+      }
     }
     Enums: {
       app_role: "employee" | "director"
