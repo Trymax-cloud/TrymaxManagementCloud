@@ -564,6 +564,12 @@ export type Database = {
           updated_at: string
         }
       }
+      delete_meeting: {
+        Args: {
+          p_meeting_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "employee" | "director"

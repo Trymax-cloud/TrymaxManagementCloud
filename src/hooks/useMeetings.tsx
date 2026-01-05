@@ -183,13 +183,21 @@ export function useDeleteMeeting() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // Simple delete - cascade should handle participants
-      const { error } = await supabase
-        .from('meetings')
-        .delete()
-        .eq('id', id);
+      console.log('Deleting meeting with RPC:', id);
 
-      if (error) throw error;
+      // Use RPC for meeting deletion - handles RLS properly
+      const { data, error } = await supabase.rpc('delete_meeting', {
+        p_meeting_id: id
+      });
+
+      if (error) {
+        console.error('Meeting deletion failed', error);
+        throw new Error(error.message || 'Failed to delete meeting');
+      }
+
+      if (!data) throw new Error('Failed to delete meeting');
+
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
@@ -198,10 +206,11 @@ export function useDeleteMeeting() {
         description: 'Meeting and all participants have been removed.'
       });
     },
-    onError: (error: Error) => {
+    onError: (error) => {
+      console.error('Meeting deletion failed', error);
       toast({
         title: 'Error deleting meeting',
-        description: error.message,
+        description: error.message || 'Failed to delete meeting',
         variant: 'destructive'
       });
     }
