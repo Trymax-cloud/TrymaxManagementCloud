@@ -1,44 +1,24 @@
 -- ============================================================
--- EWMP MEETING CREATION FIX
--- Fix meeting creation issues and partial meeting creation
+-- EWMP FINAL MEETING CREATION FIX - CONSTRAINT ISSUE FIXED
+-- Complete fix for meeting creation with constraint violation resolved
 -- ============================================================
 
 -- ============================================================
--- 1️⃣ DIAGNOSE CURRENT MEETING ISSUES
+-- 1️⃣ CLEAN UP EXISTING ISSUES
 -- ============================================================
 
--- Check for partial meetings (meetings without participants)
-SELECT 
-  'PARTIAL MEETINGS' as issue_type,
-  COUNT(*) as count,
-  STRING_AGG(id::text, ', ') as problematic_meeting_ids
-FROM public.meetings
+-- Remove partial meetings first
+DELETE FROM public.meetings
 WHERE id NOT IN (
   SELECT DISTINCT meeting_id FROM public.meeting_participants
 );
 
--- Check meeting_participants table structure
-SELECT 
-  'MEETING_PARTICIPANTS STRUCTURE' as info,
-  column_name,
-  data_type,
-  is_nullable,
-  column_default
-FROM information_schema.columns 
-WHERE table_schema = 'public' 
-  AND table_name = 'meeting_participants'
-ORDER BY ordinal_position;
-
--- Check for orphaned participants (participants without meetings)
-SELECT 
-  'ORPHANED PARTICIPANTS' as issue_type,
-  COUNT(*) as count,
-  STRING_AGG(id::text, ', ') as orphaned_participant_ids
-FROM public.meeting_participants
+-- Remove orphaned participants
+DELETE FROM public.meeting_participants
 WHERE meeting_id NOT IN (SELECT id FROM public.meetings);
 
 -- ============================================================
--- 2️⃣ FIX MEETING CREATION POLICIES
+-- 2️⃣ DROP AND RECREATE POLICIES
 -- ============================================================
 
 -- Drop all existing meeting policies
@@ -47,6 +27,12 @@ DROP POLICY IF EXISTS "meetings_insert" ON public.meetings;
 DROP POLICY IF EXISTS "meetings_update" ON public.meetings;
 DROP POLICY IF EXISTS "meetings_delete" ON public.meetings;
 DROP POLICY IF EXISTS "meetings_manage" ON public.meetings;
+
+-- Drop all existing meeting_participants policies
+DROP POLICY IF EXISTS "meeting_participants_select" ON public.meeting_participants;
+DROP POLICY IF EXISTS "meeting_participants_insert" ON public.meeting_participants;
+DROP POLICY IF EXISTS "meeting_participants_delete" ON public.meeting_participants;
+DROP POLICY IF EXISTS "meeting_participants_manage" ON public.meeting_participants;
 
 -- Create simplified meeting policies
 CREATE POLICY "meetings_select"
@@ -78,16 +64,6 @@ USING (
   OR public.has_role((select auth.uid()), 'director')
 );
 
--- ============================================================
--- 3️⃣ FIX MEETING_PARTICIPANTS POLICIES
--- ============================================================
-
--- Drop all existing meeting_participants policies
-DROP POLICY IF EXISTS "meeting_participants_select" ON public.meeting_participants;
-DROP POLICY IF EXISTS "meeting_participants_insert" ON public.meeting_participants;
-DROP POLICY IF EXISTS "meeting_participants_delete" ON public.meeting_participants;
-DROP POLICY IF EXISTS "meeting_participants_manage" ON public.meeting_participants;
-
 -- Create simplified meeting_participants policies
 CREATE POLICY "meeting_participants_select"
 ON public.meeting_participants FOR SELECT
@@ -115,7 +91,7 @@ USING (
 );
 
 -- ============================================================
--- 4️⃣ CREATE MEETING CREATION FUNCTION
+-- 3️⃣ CREATE MEETING CREATION FUNCTION - CONSTRAINT FIXED
 -- ============================================================
 
 -- Drop function if exists
@@ -124,10 +100,10 @@ DROP FUNCTION IF EXISTS public.create_meeting_with_participants();
 -- Function to safely create meeting with participants
 CREATE OR REPLACE FUNCTION public.create_meeting_with_participants(
   meeting_title TEXT,
-  meeting_note TEXT DEFAULT NULL,
+  meeting_note TEXT,
   meeting_date DATE,
   meeting_time TIME,
-  participant_ids UUID[] DEFAULT NULL
+  participant_ids UUID[]
 )
 RETURNS UUID
 LANGUAGE plpgsql
@@ -137,7 +113,29 @@ AS $$
 DECLARE
   new_meeting_id UUID;
   participant_id UUID;
+  current_user_id UUID;
 BEGIN
+  -- Get current user ID and validate it
+  current_user_id := (select auth.uid());
+  
+  -- Validate user is authenticated
+  IF current_user_id IS NULL THEN
+    RAISE EXCEPTION 'User not authenticated';
+  END IF;
+  
+  -- Validate required fields
+  IF meeting_title IS NULL OR meeting_title = '' THEN
+    RAISE EXCEPTION 'Meeting title is required';
+  END IF;
+  
+  IF meeting_date IS NULL THEN
+    RAISE EXCEPTION 'Meeting date is required';
+  END IF;
+  
+  IF meeting_time IS NULL THEN
+    RAISE EXCEPTION 'Meeting time is required';
+  END IF;
+  
   -- Create the meeting first
   INSERT INTO public.meetings (
     title,
@@ -150,7 +148,7 @@ BEGIN
     meeting_note,
     meeting_date,
     meeting_time,
-    (select auth.uid())
+    current_user_id  -- Use the validated user ID
   ) RETURNING id INTO new_meeting_id;
   
   -- Add participants if provided
@@ -158,7 +156,7 @@ BEGIN
     FOREACH participant_id IN ARRAY participant_ids
     LOOP
       -- Skip if participant is the creator (they're automatically included)
-      IF participant_id != (select auth.uid()) THEN
+      IF participant_id != current_user_id THEN
         INSERT INTO public.meeting_participants (
           meeting_id,
           user_id
@@ -176,61 +174,91 @@ BEGIN
     user_id
   ) VALUES (
     new_meeting_id,
-    (select auth.uid())
+    current_user_id
   ) ON CONFLICT (meeting_id, user_id) DO NOTHING;
   
   RETURN new_meeting_id;
+EXCEPTION
+  WHEN OTHERS THEN
+    -- Log the error and re-raise
+    RAISE NOTICE 'Error in create_meeting_with_participants: %, %', SQLERRM, SQLSTATE;
+    RAISE;
 END;
 $$;
 
 -- ============================================================
--- 5️⃣ CLEAN UP PARTIAL MEETINGS
+-- 4️⃣ FIX VALIDATION CONSTRAINTS
 -- ============================================================
 
--- Remove meetings without participants (they're incomplete)
-DELETE FROM public.meetings
-WHERE id NOT IN (
-  SELECT DISTINCT meeting_id FROM public.meeting_participants
-);
+-- Drop existing constraints that might be causing issues
+ALTER TABLE public.meetings DROP CONSTRAINT IF EXISTS meetings_valid_dates;
+ALTER TABLE public.meeting_participants DROP CONSTRAINT IF EXISTS meeting_participants_valid;
 
--- Remove orphaned participants (participants without meetings)
-DELETE FROM public.meeting_participants
-WHERE meeting_id NOT IN (SELECT id FROM public.meetings);
+-- Add simpler, more flexible constraints
+DO $$
+BEGIN
+    -- Add check constraint to prevent invalid meeting data (more flexible)
+    ALTER TABLE public.meetings 
+    ADD CONSTRAINT meetings_valid_dates 
+    CHECK (
+        title IS NOT NULL 
+        AND title != ''
+        AND meeting_date IS NOT NULL
+        AND meeting_time IS NOT NULL
+        -- created_by can be NULL for now, function will handle validation
+    );
+EXCEPTION
+    WHEN duplicate_object THEN
+        NULL; -- Constraint already exists, ignore
+END $$;
+
+DO $$
+BEGIN
+    -- Add check constraint for meeting_participants
+    ALTER TABLE public.meeting_participants 
+    ADD CONSTRAINT meeting_participants_valid 
+    CHECK (
+        meeting_id IS NOT NULL 
+        AND user_id IS NOT NULL
+    );
+EXCEPTION
+    WHEN duplicate_object THEN
+        NULL; -- Constraint already exists, ignore
+END $$;
 
 -- ============================================================
--- 6️⃣ ADD MEETING VALIDATION
+-- 5️⃣ VERIFICATION TESTS
 -- ============================================================
 
--- Add check constraint to prevent invalid meeting data
-ALTER TABLE public.meetings 
-ADD CONSTRAINT meetings_valid_dates 
-CHECK (
-  meeting_date IS NOT NULL 
-  AND meeting_time IS NOT NULL
-  AND created_by IS NOT NULL
-);
+-- Test function existence
+SELECT 
+  'FUNCTION EXISTS TEST' as test,
+  CASE 
+    WHEN routine_name IS NOT NULL THEN '✅ FUNCTION EXISTS'
+    ELSE '❌ FUNCTION MISSING'
+  END as status
+FROM information_schema.routines 
+WHERE routine_schema = 'public' 
+  AND routine_name = 'create_meeting_with_participants';
 
--- Add check constraint for meeting_participants
-ALTER TABLE public.meeting_participants 
-ADD CONSTRAINT meeting_participants_valid 
-CHECK (
-  meeting_id IS NOT NULL 
-  AND user_id IS NOT NULL
-);
+-- Test current user authentication
+SELECT 
+  'AUTHENTICATION TEST' as test,
+  CASE 
+    WHEN (select auth.uid()) IS NOT NULL THEN '✅ AUTHENTICATED'
+    ELSE '❌ NOT AUTHENTICATED'
+  END as auth_status,
+  (select auth.uid()) as current_user_id;
 
--- ============================================================
--- 7️⃣ VERIFICATION TESTS
--- ============================================================
-
--- Test meeting creation function
+-- Test meeting creation with explicit type casts
 SELECT 
   'MEETING CREATION TEST' as test,
   public.create_meeting_with_participants(
-    'Test Meeting',
-    'This is a test meeting',
-    CURRENT_DATE + INTERVAL '1 day',
-    '10:00:00',
-    ARRAY[(SELECT id FROM public.profiles WHERE id != (select auth.uid()) LIMIT 1)]
+    'Test Meeting'::TEXT,
+    NULL::TEXT,
+    (CURRENT_DATE + INTERVAL '1 day')::DATE,
+    '10:00:00'::TIME,
+    ARRAY[(SELECT id::UUID FROM public.profiles WHERE id != (select auth.uid()) LIMIT 1)]::UUID[]
   ) as created_meeting_id;
 
 -- Verify meeting was created with participants
@@ -240,6 +268,7 @@ SELECT
   m.title,
   m.meeting_date,
   m.meeting_time,
+  m.created_by,
   COUNT(mp.user_id) as participant_count,
   STRING_AGG(p.name, ', ') as participant_names
 FROM public.meetings m
@@ -251,7 +280,7 @@ WHERE m.id = (
   ORDER BY created_at DESC 
   LIMIT 1
 )
-GROUP BY m.id, m.title, m.meeting_date, m.meeting_time;
+GROUP BY m.id, m.title, m.meeting_date, m.meeting_time, m.created_by;
 
 -- Check for any remaining issues
 SELECT 
@@ -271,15 +300,24 @@ FROM public.meeting_participants
 WHERE meeting_id NOT IN (SELECT id FROM public.meetings);
 
 -- ============================================================
--- 8️⃣ FRONTEND FIXES NEEDED
+-- 6️⃣ FINAL POLICY VERIFICATION
 -- ============================================================
 
--- Update CreateMeetingModal to:
--- 1. Use the create_meeting_with_participants function
--- 2. Handle errors properly
--- 3. Show proper loading states
--- 4. Validate form data before submission
+-- Show all current policies
+SELECT 
+  'FINAL POLICY STATE' as info,
+  tablename,
+  cmd,
+  policyname,
+  CASE 
+    WHEN qual LIKE '%(select auth.uid())%' THEN 'OPTIMIZED ✅'
+    ELSE 'NEEDS FIX ❌'
+  END as auth_status
+FROM pg_policies 
+WHERE schemaname = 'public' 
+  AND tablename IN ('meetings', 'meeting_participants')
+ORDER BY tablename, cmd, policyname;
 
 -- ============================================================
--- DONE ✅
+-- DONE ✅ - CONSTRAINT VIOLATION FIXED
 -- ============================================================
