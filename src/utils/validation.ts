@@ -1,6 +1,7 @@
 // Development validation utility
 // Ensures the app is Electron-safe during development
 
+import React from 'react';
 import { validateElectronSafety } from "@/utils/environment";
 
 /**
@@ -84,20 +85,26 @@ export const electronChecks = {
 export function useElectronValidation() {
   // Only run in development
   const isDevelopment = import.meta.env?.MODE === 'development';
+  const isElectron = typeof window !== 'undefined' && !!(window as any).electron;
 
-  if (isDevelopment) {
-    // Validate on mount
-    validateElectronCompatibility();
-    
-    // Set up periodic validation (every 30 seconds in dev)
-    const interval = setInterval(() => {
+  // Always run validation in development
+  React.useEffect(() => {
+    if (isDevelopment) {
+      // Validate on mount
       validateElectronCompatibility();
-    }, 30000);
+      
+      // Set up periodic validation (every 30 seconds in dev)
+      const interval = setInterval(() => {
+        validateElectronCompatibility();
+      }, 30000);
 
-    return () => clearInterval(interval);
-  }
+      // Clean up interval on unmount
+      return () => clearInterval(interval);
+    }
+  }, [isDevelopment]);
 
-  return () => {};
+  // Always return the same type
+  return { isElectron };
 }
 
 /**
