@@ -5,12 +5,13 @@ import { notifyDesktop, isDesktopNotificationSupported } from "@/utils/notificat
 import { notificationPermissionManager } from "@/utils/notificationPermission";
 
 interface NotificationEvent {
-  type: 'task-completed' | 'task-overdue' | 'new-assignment';
+  type: 'task-completed' | 'task-overdue' | 'new-assignment' | 'new-meeting';
   data: {
     id: string;
     title: string;
     priority?: string;
     assignee_id?: string;
+    date?: string; // For meetings
   };
   timestamp: number;
 }
@@ -124,6 +125,9 @@ class NotificationManager {
       case 'new-assignment':
         await this.handleNewAssignment(event.data);
         break;
+      case 'new-meeting':
+        await this.handleNewMeeting(event.data);
+        break;
     }
   }
 
@@ -162,6 +166,19 @@ class NotificationManager {
       message: `You have been assigned: "${data.title}"`,
       tag: `new-assignment-${data.id}`,
       requireInteraction: data.priority === "emergency",
+    });
+  }
+
+  /**
+   * Handle new meeting notification
+   */
+  private async handleNewMeeting(data: NotificationEvent['data']) {
+    const meetingDate = data.date ? new Date(data.date).toLocaleDateString() : 'Soon';
+    await notifyDesktop({
+      title: "📅 New Meeting",
+      message: `Meeting "${data.title}" scheduled for ${meetingDate}`,
+      tag: `new-meeting-${data.id}`,
+      requireInteraction: false,
     });
   }
 

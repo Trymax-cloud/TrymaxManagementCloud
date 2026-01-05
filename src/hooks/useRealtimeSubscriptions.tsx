@@ -245,10 +245,119 @@ export function useRealtimeRatings() {
   }, [user?.id, queryClient]);
 }
 
+export function useRealtimeMeetings() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel("meetings-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "meetings",
+        },
+        (payload) => {
+          console.log("Meeting change:", payload);
+          
+          // Invalidate all meeting-related queries
+          queryClient.invalidateQueries({ queryKey: ["meetings"] });
+          queryClient.invalidateQueries({ queryKey: ["my-meetings"] });
+          queryClient.invalidateQueries({ queryKey: ["upcoming-meetings"] });
+          queryClient.invalidateQueries({ queryKey: ["meeting-participants"] });
+          queryClient.invalidateQueries({ queryKey: ["daily-summary"] });
+
+          if (payload.eventType === "INSERT") {
+            const meeting = payload.new as { title: string; meeting_date: string };
+            toast({
+              title: "New Meeting Scheduled",
+              description: `Meeting "${meeting.title}" scheduled for ${new Date(meeting.meeting_date).toLocaleDateString()}`,
+            });
+            
+            // Check if current user is a participant
+            // This would require checking meeting_participants table
+            notificationManager.addNotificationEvent({
+              type: 'new-meeting',
+              data: {
+                id: payload.new.id,
+                title: meeting.title,
+                date: meeting.meeting_date,
+              },
+              timestamp: Date.now(),
+            });
+          } else if (payload.eventType === "UPDATE") {
+            const meeting = payload.new as { title: string; meeting_date: string; meeting_time: string };
+            if (payload.old?.meeting_date !== meeting.meeting_date || payload.old?.meeting_time !== meeting.meeting_time) {
+              toast({
+                title: "Meeting Rescheduled",
+                description: `Meeting "${meeting.title}" has been rescheduled`,
+              });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, queryClient]);
+}
+
+export function useRealtimeDailySummaries() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel("daily-summaries-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "daily_summaries",
+        },
+        (payload) => {
+          console.log("Daily Summary change:", payload);
+          
+          // Invalidate daily summary related queries
+          queryClient.invalidateQueries({ queryKey: ["daily-summary"] });
+          queryClient.invalidateQueries({ queryKey: ["daily-summaries"] });
+          queryClient.invalidateQueries({ queryKey: ["analytics"] });
+          queryClient.invalidateQueries({ queryKey: ["analytics-summary"] });
+
+          if (payload.eventType === "INSERT") {
+            const summary = payload.new as { created_date: string; created_by: string };
+            if (summary.created_by === user.id) {
+              toast({
+                title: "Daily Summary Created",
+                description: `Daily summary for ${new Date(summary.created_date).toLocaleDateString()} has been created`,
+              });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, queryClient]);
+}
+
 // Combined hook for all real-time subscriptions
 export function useAllRealtimeSubscriptions() {
   useRealtimeAssignments();
   useRealtimeProjects();
   useRealtimePayments();
   useRealtimeRatings();
+  useRealtimeMeetings();
+  useRealtimeDailySummaries();
 }
