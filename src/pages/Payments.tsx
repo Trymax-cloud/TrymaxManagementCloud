@@ -72,30 +72,19 @@ export default function Payments() {
   };
 
   const handleSendReminders = async () => {
-    if (selectedPayments.length > 0) {
-      try {
-        await sendReminders({ payment_ids: selectedPayments });
-        setSelectedPayments([]);
-      } catch (error) {
-        console.error("Failed to send reminders:", error);
-      }
-    } else {
-      try {
-        await sendReminders({ payment_ids: overduePayments?.map(p => p.id) });
-      } catch (error) {
-        console.error("Failed to send reminders:", error);
-      }
+    if (selectedPayments.length === 0) {
+      toast.error("Please select payments to send reminders for");
+      return;
     }
-  };
 
-  const handleTestPaymentReminders = async () => {
     try {
       const result = await sendPaymentReminders.mutateAsync();
-      console.log('Payment reminders test result:', result);
+      console.log('Payment reminders result:', result);
       toast.success(`Payment reminders processed: ${result.sent} sent, ${result.skipped} skipped`);
+      setSelectedPayments([]);
     } catch (error) {
-      console.error("Failed to test payment reminders:", error);
-      toast.error("Failed to process payment reminders");
+      console.error("Failed to send reminders:", error);
+      toast.error("Failed to send payment reminders");
     }
   };
 
@@ -143,37 +132,20 @@ export default function Payments() {
             Track and manage client payment follow-ups
           </p>
           {isDirector && (
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight">Payments</h1>
+                <p className="text-muted-foreground">
+                  Manage client payments and send reminders
+                </p>
+              </div>
               <Button 
-                variant="outline" 
-                className="gap-2" 
                 onClick={handleSendReminders}
-                disabled={sendingReminders}
+                disabled={selectedPayments.length === 0 || sendPaymentReminders.isPending}
+                className="flex items-center gap-2"
               >
-                {sendingReminders ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Mail className="h-4 w-4" />
-                )}
-                Send Reminders
-                {selectedPayments.length > 0 && ` (${selectedPayments.length})`}
-              </Button>
-              <Button 
-                variant="secondary" 
-                className="gap-2" 
-                onClick={handleTestPaymentReminders}
-                disabled={sendPaymentReminders.isPending}
-              >
-                {sendPaymentReminders.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <AlertCircle className="h-4 w-4" />
-                )}
-                Test Auto Reminders
-              </Button>
-              <Button className="gap-2" onClick={() => setCreateModalOpen(true)}>
-                <Plus className="h-4 w-4" />
-                New Payment
+                <Mail className="h-4 w-4" />
+                {sendPaymentReminders.isPending ? "Sending..." : "Send Reminders"}
               </Button>
             </div>
           )}

@@ -52,7 +52,6 @@ serve(async (req) => {
     let overdue = 0
     let upcoming_72h = 0
     let upcoming_24h = 0
-    const errors = []
 
     // Get all unpaid payments
     const { data: payments, error: fetchError } = await supabase
@@ -75,30 +74,26 @@ serve(async (req) => {
         let reminderType = null
         let shouldSend = false
         let updateField = null
-        let updateValue = null
 
         // Check 72 HOURS REMINDER
-        if (dueDate.toDateString() === threeDaysFromNow.toDateString() && !payment.remarks?.includes('72h_reminder_sent')) {
+        if (dueDate.toDateString() === threeDaysFromNow.toDateString() && !payment.last_72h_reminder_sent) {
           reminderType = '72_hours'
           shouldSend = true
-          updateField = 'remarks'
-          updateValue = `${payment.remarks || ''} | 72h_reminder_sent: ${now.toISOString()}`
+          updateField = 'last_72h_reminder_sent'
           upcoming_72h++
         }
         // Check 24 HOURS REMINDER
-        else if (dueDate.toDateString() === tomorrow.toDateString() && !payment.remarks?.includes('24h_reminder_sent')) {
+        else if (dueDate.toDateString() === tomorrow.toDateString() && !payment.last_24h_reminder_sent) {
           reminderType = '24_hours'
           shouldSend = true
-          updateField = 'remarks'
-          updateValue = `${payment.remarks || ''} | 24h_reminder_sent: ${now.toISOString()}`
+          updateField = 'last_24h_reminder_sent'
           upcoming_24h++
         }
         // Check OVERDUE REMINDER
-        else if (dueDate < today && !payment.remarks?.includes('overdue_reminder_sent')) {
+        else if (dueDate < today && !payment.last_overdue_reminder_sent) {
           reminderType = 'overdue'
           shouldSend = true
-          updateField = 'remarks'
-          updateValue = `${payment.remarks || ''} | overdue_reminder_sent: ${now.toISOString()}`
+          updateField = 'last_overdue_reminder_sent'
           overdue++
         }
 
@@ -160,7 +155,6 @@ serve(async (req) => {
 
           } catch (emailError) {
             console.error('Email error:', emailError)
-            errors.push(`Payment ${payment.id}: ${emailError.message}`)
             continue
           }
         } else {
@@ -169,7 +163,7 @@ serve(async (req) => {
 
         // Update payment record with reminder timestamp
         const updateData = {
-          [updateField]: updateValue,
+          [updateField]: now.toISOString(),
           updated_at: now.toISOString()
         }
 
@@ -180,7 +174,6 @@ serve(async (req) => {
 
         if (updateError) {
           console.error('Error updating payment:', updateError)
-          errors.push(`Payment ${payment.id}: ${updateError.message}`)
           continue
         }
 
@@ -189,7 +182,6 @@ serve(async (req) => {
 
       } catch (error) {
         console.error(`Error processing payment ${payment.id}:`, error)
-        errors.push(`Payment ${payment.id}: ${error.message}`)
       }
     }
 
@@ -199,8 +191,7 @@ serve(async (req) => {
       skipped,
       overdue,
       upcoming_72h,
-      upcoming_24h,
-      errors
+      upcoming_24h
     }
 
     console.log('Payment reminders completed:', result)
@@ -220,8 +211,7 @@ serve(async (req) => {
         skipped: 0,
         overdue: 0,
         upcoming_72h: 0,
-        upcoming_24h: 0,
-        errors: [error.message]
+        upcoming_24h: 0
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

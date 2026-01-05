@@ -8,7 +8,6 @@ interface PaymentReminderResult {
   overdue: number;
   upcoming_72h: number;
   upcoming_24h: number;
-  errors: string[];
 }
 
 export function useSendPaymentReminders() {
