@@ -13,6 +13,8 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: mode === 'development',
     rollupOptions: {
       output: {
         manualChunks: {
@@ -22,6 +24,10 @@ export default defineConfig(({ mode }) => ({
         },
       },
     },
+    // Ensure proper SPA handling
+    target: 'esnext',
+    minify: 'terser',
+    manifest: true,
   },
   plugins: [
     react(),

@@ -241,13 +241,49 @@ export function useAllEmployeeDailySummaries(date: Date) {
 
       if (assignmentsError) throw assignmentsError;
 
-      // Fetch all daily summaries for this date (to get notes)
+      // Fetch all daily summaries for this date (includes notes)
+      console.log("🔍 DEBUG: Querying daily summaries for date:", dateStr);
+      console.log("🔍 DEBUG: Current user ID:", user?.id);
+      console.log("🔍 DEBUG: Current user role:", user?.user_metadata?.role);
+      
+      // First, let's check what dates exist in the database
+      console.log("🔍 DEBUG: Checking all daily summaries without date filter...");
+      const { data: allDailySummaries, error: allSummariesError } = await supabase
+        .from("daily_summaries")
+        .select("date, user_id, notes")
+        .limit(10);
+
+      if (allSummariesError) {
+        console.log("🔍 DEBUG: All summaries query error:", allSummariesError);
+      } else {
+        console.log("🔍 DEBUG: All daily summaries in database:");
+        allDailySummaries?.forEach((summary, index) => {
+          console.log(`  ${index + 1}. date: ${summary.date}, user_id: ${summary.user_id}, notes: ${summary.notes?.substring(0, 50)}...`);
+        });
+      }
+      
+      // Now try with date filter
       const { data: dailySummaries, error: summariesError } = await supabase
         .from("daily_summaries")
         .select("*")
         .eq("date", dateStr);
 
-      if (summariesError) throw summariesError;
+      if (summariesError) {
+        console.log("🔍 DEBUG: Daily summaries query error:", summariesError);
+        throw summariesError;
+      }
+      
+      console.log("🔍 DEBUG: Daily summaries fetched:", dailySummaries?.length || 0);
+      console.log("🔍 DEBUG: Sample daily summary:", dailySummaries?.[0]);
+      console.log("🔍 DEBUG: All daily summaries:", dailySummaries);
+      
+      // Debug: Show all user_ids in summaries
+      if (dailySummaries && dailySummaries.length > 0) {
+        console.log("🔍 DEBUG: User IDs in database summaries:");
+        dailySummaries.forEach((summary, index) => {
+          console.log(`  ${index + 1}. user_id: ${summary.user_id}, date: ${summary.date}, notes: ${summary.notes}`);
+        });
+      }
       
       const dateStart = startOfDay(date);
       const dateEnd = endOfDay(date);
@@ -278,6 +314,11 @@ export function useAllEmployeeDailySummaries(date: Date) {
         const employeeSummary = (dailySummaries as DailySummary[])?.find(
           (s) => s.user_id === profile.id
         );
+
+        console.log("🔍 DEBUG: Employee:", profile.name, "ID:", profile.id);
+        console.log("🔍 DEBUG: Looking for summary with user_id:", profile.id);
+        console.log("🔍 DEBUG: Found summary:", !!employeeSummary);
+        console.log("🔍 DEBUG: Summary notes:", employeeSummary?.notes || 'null');
 
         // Find the employee's role from the separate userRoles data
         const userRoleData = userRoles?.find(r => r.user_id === profile.id);
