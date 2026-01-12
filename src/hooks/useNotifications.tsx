@@ -52,6 +52,7 @@ export function useNotifications() {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
+          console.log("🔔 NEW NOTIFICATION RECEIVED:", payload.new);
           const notification = payload.new as Notification;
           queryClient.invalidateQueries({ queryKey: ["notifications"] });
           
@@ -60,6 +61,8 @@ export function useNotifications() {
           const shouldShow = settingsKey ? shouldShowNotification(settingsKey as any) : true;
           
           if (shouldShow) {
+            console.log("🔔 SHOWING NOTIFICATION:", notification);
+            
             // Show toast for new notifications
             toast({
               title: notification.title,
@@ -71,6 +74,8 @@ export function useNotifications() {
               body: notification.message,
               tag: notification.id, // Prevent duplicates
             });
+          } else {
+            console.log("🔔 NOTIFICATION BLOCKED BY SETTINGS");
           }
         }
       )
@@ -86,6 +91,8 @@ export function useNotifications() {
     queryFn: async () => {
       if (!user?.id) return [];
       
+      console.log("🔔 FETCHING NOTIFICATIONS FOR USER:", user.id);
+      
       const { data, error } = await supabase
         .from("notifications")
         .select("*")
@@ -94,8 +101,13 @@ export function useNotifications() {
         .limit(50);
 
       if (error) {
-        console.error("Error fetching notifications:", error);
+        console.error("🔔 ERROR FETCHING NOTIFICATIONS:", error);
         throw error;
+      }
+      
+      console.log("🔔 FETCHED NOTIFICATIONS COUNT:", data?.length || 0);
+      if (data && data.length > 0) {
+        console.log("🔔 SAMPLE NOTIFICATION:", data[0]);
       }
       
       return data as Notification[];
