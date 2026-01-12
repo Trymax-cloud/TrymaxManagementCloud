@@ -109,7 +109,6 @@ export function useCreateRating() {
           type: "rating_received",
           title: "🌟 New Performance Rating",
           message: `You received a ${input.score}/5 rating for ${input.period_type === "monthly" ? "month" : "year"} ${input.period_value}`,
-          priority: "normal",
           related_entity_type: "rating",
           related_entity_id: data.id,
         })

@@ -14,7 +14,6 @@ export interface Notification {
   message: string;
   related_entity_type: string | null;
   related_entity_id: string | null;
-  priority: string;
   is_read: boolean;
   created_at: string;
   updated_at: string;
@@ -78,7 +77,6 @@ export function useNotifications() {
             toast({
               title: notification.title,
               description: notification.message,
-              variant: notification.priority === "critical" ? "destructive" : "default",
             });
 
             // Show desktop notification
