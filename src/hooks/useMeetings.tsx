@@ -145,7 +145,6 @@ export function useCreateMeeting() {
           priority: "normal",
           related_entity_type: "meeting",
           related_entity_id: data.id,
-          action_url: "/meetings",
         }));
 
         await supabase.from("notifications").insert(notifications);

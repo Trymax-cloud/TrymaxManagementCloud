@@ -112,7 +112,6 @@ export function useCreateRating() {
           priority: "normal",
           related_entity_type: "rating",
           related_entity_id: data.id,
-          action_url: "/ratings",
         })
         .select()
         .single();

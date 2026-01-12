@@ -16,7 +16,6 @@ export interface Notification {
   related_entity_id: string | null;
   priority: string;
   is_read: boolean;
-  action_url: string | null;
   created_at: string;
   updated_at: string;
 }
