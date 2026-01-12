@@ -12,6 +12,8 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { useElectronValidation } from "@/utils/validation";
 import { notificationPermissionManager } from "@/utils/notificationPermission";
+import { requestNotificationPermission } from "@/lib/desktopNotifications";
+import { useAuth } from "@/hooks/useAuth";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { AppLoader } from "@/components/ui/AppLoader";
 import { useAppGate } from "@/components/ui/AppGate";
@@ -54,6 +56,14 @@ const PageLoader = () => (
 
 function AppContent() {
   const { isAppReady } = useAppGate();
+
+  // Request notification permission after user logs in
+  useEffect(() => {
+    const { user } = useAuth();
+    if (user) {
+      requestNotificationPermission();
+    }
+  }, []);
 
   return (
     <AppLoader isAppReady={isAppReady}>

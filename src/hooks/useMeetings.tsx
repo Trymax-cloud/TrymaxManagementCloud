@@ -133,6 +133,24 @@ export function useCreateMeeting() {
 
       if (!data) throw new Error('Failed to create meeting');
 
+      // After meeting is created, notify all participants
+      const allRecipients = input.participant_ids || []; // Don't notify creator
+      
+      if (allRecipients.length > 0) {
+        const notifications = allRecipients.map(userId => ({
+          user_id: userId,
+          type: "meeting_created",
+          title: "📅 New Meeting Scheduled",
+          message: `You've been invited to "${input.title}" on ${input.meeting_date} at ${input.meeting_time}`,
+          priority: "normal",
+          related_entity_type: "meeting",
+          related_entity_id: data.id,
+          action_url: "/meetings",
+        }));
+
+        await supabase.from("notifications").insert(notifications);
+      }
+
       return data;
     },
     onSuccess: () => {

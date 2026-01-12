@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useMemo } from "react";
 import { toast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/SettingsContext";
+import { showDesktopNotification } from "@/lib/desktopNotifications";
 
 export interface Notification {
   id: string;
@@ -30,6 +31,9 @@ const notificationTypeToSettingsKey: Record<string, string> = {
   payment_reminder: "paymentReminders",
   payment_due: "paymentReminders",
   payment_overdue: "paymentReminders",
+  rating_received: "assignmentReminders",
+  meeting_created: "assignmentReminders",
+  meeting_reminder: "assignmentReminders",
 };
 
 export function useNotifications() {
@@ -65,6 +69,12 @@ export function useNotifications() {
               title: notification.title,
               description: notification.message,
               variant: notification.priority === "critical" ? "destructive" : "default",
+            });
+
+            // Show desktop notification
+            showDesktopNotification(notification.title, {
+              body: notification.message,
+              tag: notification.id, // Prevent duplicates
             });
           }
         }
