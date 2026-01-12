@@ -11,7 +11,6 @@ import { RealtimeProvider } from "@/components/providers/RealtimeProvider";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { useElectronValidation } from "@/utils/validation";
-import { notificationPermissionManager } from "@/utils/notificationPermission";
 import { requestNotificationPermission } from "@/lib/desktopNotifications";
 import { useAuth } from "@/hooks/useAuth";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
@@ -56,14 +55,6 @@ const PageLoader = () => (
 
 function AppContent() {
   const { isAppReady } = useAppGate();
-
-  // Request notification permission after user logs in
-  useEffect(() => {
-    const { user } = useAuth();
-    if (user) {
-      requestNotificationPermission();
-    }
-  }, []);
 
   return (
     <AppLoader isAppReady={isAppReady}>
@@ -122,12 +113,12 @@ function App() {
     // Request notification permission after a short delay
     const timer = setTimeout(() => {
       if (!isElectron) {
-        notificationPermissionManager.requestPermission();
+        requestNotificationPermission();
       }
     }, 3000); // 3 seconds after app load
 
     return () => clearTimeout(timer);
-  }, [isElectron, notificationPermissionManager]);
+  }, [isElectron]);
 
   return (
     <ErrorBoundary>
