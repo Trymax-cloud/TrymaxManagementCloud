@@ -16,22 +16,34 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { AppLoader } from "@/components/ui/AppLoader";
 import { useAppGate } from "@/components/ui/AppGate";
 
-// Lazy load pages for better performance
-const Auth = lazy(() => import("./pages/Auth"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Assignments = lazy(() => import("./pages/Assignments"));
-const Projects = lazy(() => import("./pages/Projects"));
-const Employees = lazy(() => import("./pages/Employees"));
-const Ratings = lazy(() => import("./pages/Ratings"));
-const Payments = lazy(() => import("./pages/Payments"));
-const DailySummary = lazy(() => import("./pages/DailySummary"));
-const Notifications = lazy(() => import("./pages/Notifications"));
-const Settings = lazy(() => import("./pages/Settings"));
-const Messages = lazy(() => import("./pages/Messages"));
-const Meetings = lazy(() => import("./pages/Meetings"));
-const Reports = lazy(() => import("./pages/Reports"));
-const Unauthorized = lazy(() => import("./pages/Unauthorized"));
-const NotFound = lazy(() => import("./pages/NotFound"));
+// Helper to handle chunk loading errors (happens after new deployments)
+const lazyWithRetry = (importFn: () => Promise<{ default: React.ComponentType }>) => {
+  return lazy(() =>
+    importFn().catch(() => {
+      // Chunk failed to load - likely a new deployment with different hashes
+      // Reload the page to get the new HTML with correct chunk references
+      window.location.reload();
+      return { default: () => null };
+    })
+  );
+};
+
+// Lazy load pages for better performance with retry on chunk load failure
+const Auth = lazyWithRetry(() => import("./pages/Auth"));
+const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
+const Assignments = lazyWithRetry(() => import("./pages/Assignments"));
+const Projects = lazyWithRetry(() => import("./pages/Projects"));
+const Employees = lazyWithRetry(() => import("./pages/Employees"));
+const Ratings = lazyWithRetry(() => import("./pages/Ratings"));
+const Payments = lazyWithRetry(() => import("./pages/Payments"));
+const DailySummary = lazyWithRetry(() => import("./pages/DailySummary"));
+const Notifications = lazyWithRetry(() => import("./pages/Notifications"));
+const Settings = lazyWithRetry(() => import("./pages/Settings"));
+const Messages = lazyWithRetry(() => import("./pages/Messages"));
+const Meetings = lazyWithRetry(() => import("./pages/Meetings"));
+const Reports = lazyWithRetry(() => import("./pages/Reports"));
+const Unauthorized = lazyWithRetry(() => import("./pages/Unauthorized"));
+const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 
 // Suspense fallback component
 const PageLoader = () => (
