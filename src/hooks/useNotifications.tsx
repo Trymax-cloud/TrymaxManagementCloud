@@ -45,6 +45,8 @@ export function useNotifications() {
   useEffect(() => {
     if (!user?.id) return;
 
+    console.log("🔍 DEBUG: Setting up notification subscription for user:", user.id);
+
     const channel = supabase
       .channel("notifications-changes")
       .on(
@@ -56,6 +58,7 @@ export function useNotifications() {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
+          console.log("🔍 DEBUG: Received notification payload:", payload);
           const notification = payload.new as Notification;
           queryClient.invalidateQueries({ queryKey: ["notifications"] });
           
@@ -63,7 +66,15 @@ export function useNotifications() {
           const settingsKey = notificationTypeToSettingsKey[notification.type];
           const shouldShow = settingsKey ? shouldShowNotification(settingsKey as any) : true;
           
+          console.log("🔍 DEBUG: Notification settings check:", {
+            type: notification.type,
+            settingsKey,
+            shouldShow
+          });
+          
           if (shouldShow) {
+            console.log("🔍 DEBUG: Showing notification:", notification);
+            
             // Show toast for new notifications
             toast({
               title: notification.title,
@@ -76,12 +87,17 @@ export function useNotifications() {
               body: notification.message,
               tag: notification.id, // Prevent duplicates
             });
+          } else {
+            console.log("🔍 DEBUG: Notification blocked by settings");
           }
         }
       )
       .subscribe();
 
+    console.log("🔍 DEBUG: Notification subscription active");
+
     return () => {
+      console.log("🔍 DEBUG: Cleaning up notification subscription");
       supabase.removeChannel(channel);
     };
   }, [user?.id, queryClient, shouldShowNotification]);
@@ -89,6 +105,10 @@ export function useNotifications() {
   return useQuery({
     queryKey: ["notifications", user?.id],
     queryFn: async () => {
+      if (!user?.id) return [];
+      
+      console.log("🔍 DEBUG: Fetching notifications for user:", user.id);
+      
       const { data, error } = await supabase
         .from("notifications")
         .select("*")
@@ -96,7 +116,14 @@ export function useNotifications() {
         .order("created_at", { ascending: false })
         .limit(50);
 
-      if (error) throw error;
+      if (error) {
+        console.error("🔍 DEBUG: Error fetching notifications:", error);
+        throw error;
+      }
+      
+      console.log("🔍 DEBUG: Fetched notifications:", data?.length || 0, "items");
+      console.log("🔍 DEBUG: Sample notification:", data?.[0]);
+      
       return data as Notification[];
     },
     enabled: !!user?.id,

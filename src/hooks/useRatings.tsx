@@ -99,7 +99,10 @@ export function useCreateRating() {
       if (error) throw error;
 
       // Create notification for the rated employee
-      const { error: notifError } = await supabase
+      console.log("🔍 DEBUG: Creating notification for user:", input.user_id);
+      console.log("🔍 DEBUG: Rating data:", data);
+      
+      const { data: notifData, error: notifError } = await supabase
         .from("notifications")
         .insert({
           user_id: input.user_id,
@@ -110,9 +113,15 @@ export function useCreateRating() {
           related_entity_type: "rating",
           related_entity_id: data.id,
           action_url: "/ratings",
-        });
+        })
+        .select()
+        .single();
 
-      if (notifError) console.error("Failed to create notification:", notifError);
+      if (notifError) {
+        console.error("Failed to create notification:", notifError);
+      } else {
+        console.log("🔍 DEBUG: Notification created successfully:", notifData);
+      }
 
       return data;
     },
