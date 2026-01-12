@@ -99,9 +99,6 @@ export function useCreateRating() {
       if (error) throw error;
 
       // Create notification for the rated employee
-      console.log("🔍 DEBUG: Creating notification for user:", input.user_id);
-      console.log("🔍 DEBUG: Rating data:", data);
-      
       const { data: notifData, error: notifError } = await supabase
         .from("notifications")
         .insert({
@@ -109,16 +106,12 @@ export function useCreateRating() {
           type: "rating_received",
           title: "🌟 New Performance Rating",
           message: `You received a ${input.score}/5 rating for ${input.period_type === "monthly" ? "month" : "year"} ${input.period_value}`,
-          related_entity_type: "rating",
-          related_entity_id: data.id,
         })
         .select()
         .single();
 
       if (notifError) {
         console.error("Failed to create notification:", notifError);
-      } else {
-        console.log("🔍 DEBUG: Notification created successfully:", notifData);
       }
 
       return data;

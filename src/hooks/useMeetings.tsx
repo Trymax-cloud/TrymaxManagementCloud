@@ -142,8 +142,6 @@ export function useCreateMeeting() {
           type: "meeting_created",
           title: "📅 New Meeting Scheduled",
           message: `You've been invited to "${input.title}" on ${input.meeting_date} at ${input.meeting_time}`,
-          related_entity_type: "meeting",
-          related_entity_id: data.id,
         }));
 
         await supabase.from("notifications").insert(notifications);
