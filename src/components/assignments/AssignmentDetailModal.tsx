@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
   Calendar,
@@ -66,6 +66,14 @@ export function AssignmentDetailModal({
   const updateAssignment = useUpdateAssignment();
   const deleteAssignment = useDirectDeleteAssignment();
   const [newRemark, setNewRemark] = useState(assignment?.remark || "");
+  
+  // Add local state for optimistic updates
+  const [localAssignment, setLocalAssignment] = useState<AssignmentWithRelations | null>(assignment);
+
+  // Sync local state when prop changes (e.g., when modal opens with new assignment)
+  useEffect(() => {
+    setLocalAssignment(assignment);
+  }, [assignment]);
 
   // Check if user can delete this assignment
   // Directors can delete any assignment
@@ -73,20 +81,28 @@ export function AssignmentDetailModal({
   const canDelete = isDirector || 
     (user && (assignment?.creator_id === user.id || assignment?.assignee_id === user.id));
 
-  if (!assignment) return null;
+  if (!localAssignment) return null;
 
   const handleStatusChange = async (newStatus: string) => {
-    try {
-      await updateAssignment.mutateAsync({
-        id: assignment.id,
-        status: newStatus as Assignment["status"],
-        remark: newRemark || undefined,
-      });
-      setNewRemark("");
-    } catch {
-      // Error handled by mutation
-    }
-  };
+  // Optimistically update local state immediately
+  setLocalAssignment(prev => prev ? { 
+    ...prev, 
+    status: newStatus as Assignment["status"],
+    completion_date: newStatus === "completed" ? new Date().toISOString() : prev.completion_date
+  } : prev);
+  
+  try {
+    await updateAssignment.mutateAsync({
+      id: localAssignment.id,
+      status: newStatus as Assignment["status"],
+      remark: newRemark || undefined,
+    });
+    setNewRemark("");
+  } catch {
+    // Rollback on error
+    setLocalAssignment(assignment);
+  }
+};
 
   const handleDelete = () => {
     deleteAssignment.mutate(assignment.id, {
@@ -96,8 +112,8 @@ export function AssignmentDetailModal({
     });
   };
 
-  const creatorName = assignment.creator?.name || "Loading...";
-  const assigneeName = assignment.assignee?.name || "Loading...";
+  const creatorName = localAssignment.creator?.name || "Loading...";
+  const assigneeName = localAssignment.assignee?.name || "Loading...";
   const assigneeInitials = assigneeName
     .split(" ")
     .map((n) => n[0])
@@ -113,15 +129,15 @@ export function AssignmentDetailModal({
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1 flex-1">
                 <DialogTitle className="font-display text-xl pr-8">
-                  {assignment.title}
+                  {localAssignment.title}
                 </DialogTitle>
                 <DialogDescription className="sr-only">
                   Assignment details and status management
                 </DialogDescription>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <PriorityBadge priority={assignment.priority as AssignmentPriority} />
-                  <StatusBadge status={assignment.status as AssignmentStatus} />
-                  <CategoryBadge category={assignment.category} />
+                  <PriorityBadge priority={localAssignment.priority as AssignmentPriority} />
+                  <StatusBadge status={localAssignment.status as AssignmentStatus} />
+                  <CategoryBadge category={localAssignment.category} />
                 </div>
               </div>
             </div>
@@ -131,8 +147,8 @@ export function AssignmentDetailModal({
             {/* Description */}
             <div className="space-y-2">
               <Label className="text-muted-foreground">Description</Label>
-              {assignment.description ? (
-                <p className="text-sm">{assignment.description}</p>
+              {localAssignment.description ? (
+                <p className="text-sm">{localAssignment.description}</p>
               ) : (
                 <p className="text-sm text-muted-foreground italic">No description provided</p>
               )}
@@ -160,11 +176,11 @@ export function AssignmentDetailModal({
                   <span className="font-medium">{creatorName}</span>
                 </div>
 
-                {assignment.project && (
+                {localAssignment.project && (
                   <div className="flex items-center gap-2 text-sm">
                     <FolderKanban className="h-4 w-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Project:</span>
-                    <span className="font-medium">{assignment.project.name}</span>
+                    <span className="font-medium">{localAssignment.project.name}</span>
                   </div>
                 )}
               </div>
@@ -173,33 +189,33 @@ export function AssignmentDetailModal({
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Created:</span>
-                  <span>{format(new Date(assignment.created_date), "PPP")}</span>
+                  <span>{format(new Date(localAssignment.created_date), "PPP")}</span>
                 </div>
 
                 <div className="flex items-center gap-2 text-sm">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Due:</span>
-                  {assignment.due_date ? (
+                  {localAssignment.due_date ? (
                     <span
                       className={cn(
-                        new Date(assignment.due_date) < new Date() &&
-                          assignment.status !== "completed" &&
+                        new Date(localAssignment.due_date) < new Date() &&
+                          localAssignment.status !== "completed" &&
                           "text-destructive font-medium"
                       )}
                     >
-                      {format(new Date(assignment.due_date), "PPP")}
+                      {format(new Date(localAssignment.due_date), "PPP")}
                     </span>
                   ) : (
                     <span className="text-muted-foreground italic">No due date</span>
                   )}
                 </div>
 
-                {assignment.completion_date && (
+                {localAssignment.completion_date && (
                   <div className="flex items-center gap-2 text-sm">
                     <Calendar className="h-4 w-4 text-success" />
                     <span className="text-muted-foreground">Completed:</span>
                     <span className="text-success">
-                      {format(new Date(assignment.completion_date), "PPP")}
+                      {format(new Date(localAssignment.completion_date), "PPP")}
                     </span>
                   </div>
                 )}
@@ -214,7 +230,7 @@ export function AssignmentDetailModal({
                 <Label>Update Status</Label>
                 <div className="flex gap-3">
                   <Select
-                    value={assignment.status}
+                    value={localAssignment.status}
                     onValueChange={handleStatusChange}
                     disabled={updateAssignment.isPending}
                   >
@@ -238,11 +254,19 @@ export function AssignmentDetailModal({
                   Category
                 </Label>
                 <Select
-                  value={assignment.category}
+                  value={localAssignment.category}
                   onValueChange={(value) => {
+                    // Optimistically update local state
+                    setLocalAssignment(prev => prev ? { ...prev, category: value as TaskCategory } : prev);
+                    
                     updateAssignment.mutate({
-                      id: assignment.id,
+                      id: localAssignment.id,
                       category: value as TaskCategory,
+                    }, {
+                      onError: () => {
+                        // Rollback on error
+                        setLocalAssignment(assignment);
+                      }
                     });
                   }}
                   disabled={updateAssignment.isPending}
@@ -277,7 +301,7 @@ export function AssignmentDetailModal({
                 size="sm"
                 onClick={() =>
                   updateAssignment.mutate({
-                    id: assignment.id,
+                    id: localAssignment.id,
                     remark: newRemark,
                   })
                 }
@@ -286,10 +310,10 @@ export function AssignmentDetailModal({
                 Save Remark
               </Button>
 
-              {assignment.remark && (
+              {localAssignment.remark && (
                 <div className="mt-4 rounded-lg bg-muted p-3">
                   <p className="text-sm font-medium mb-1">Current Remark:</p>
-                  <p className="text-sm text-muted-foreground">{assignment.remark}</p>
+                  <p className="text-sm text-muted-foreground">{localAssignment.remark}</p>
                 </div>
               )}
             </div>
