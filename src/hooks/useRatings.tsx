@@ -99,54 +99,25 @@ export function useCreateRating() {
       if (error) throw error;
 
       // Create notification for the rated employee
-      // Add small delay to ensure table is ready
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      let notificationCreated = false;
-      
-      try {
-        const { data: notifData, error: notifError } = await supabase
-          .from("notifications")
-          .insert({
-            user_id: input.user_id,
-            type: "rating_received",
-            title: "🌟 New Performance Rating",
-            message: `You received a ${input.score}/5 rating for ${input.period_type === "monthly" ? "month" : "year"} ${input.period_value}`,
-          })
-          .select()
-          .single();
+      const { data: notifData, error: notifError } = await supabase
+        .from("notifications")
+        .insert({
+          user_id: input.user_id,
+          type: "rating_received",
+          title: "🌟 New Performance Rating",
+          message: `You received a ${input.score}/5 rating for ${input.period_type === "monthly" ? "month" : "year"} ${input.period_value}`,
+          priority: "normal",
+          related_entity_type: "rating",
+          related_entity_id: data.id,
+          action_url: "/ratings",
+        })
+        .select()
+        .single();
 
-        if (notifError) {
-          console.error("Failed to create notification:", notifError);
-        } else {
-          console.log("✅ Notification created successfully:", notifData);
-          notificationCreated = true;
-        }
-      } catch (err) {
-        console.error("Notification creation failed:", err);
-      }
-      
-      // Fallback: Try direct insert if RPC-style fails
-      if (!notificationCreated) {
-        try {
-          console.log("🔄 Trying fallback notification creation...");
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from("notifications")
-            .insert([{
-              user_id: input.user_id,
-              type: "rating_received",
-              title: "🌟 New Performance Rating",
-              message: `You received a ${input.score}/5 rating for ${input.period_type === "monthly" ? "month" : "year"} ${input.period_value}`,
-            }]);
-          
-          if (fallbackError) {
-            console.error("Fallback notification also failed:", fallbackError);
-          } else {
-            console.log("✅ Fallback notification created successfully:", fallbackData);
-          }
-        } catch (fallbackErr) {
-          console.error("Fallback notification failed:", fallbackErr);
-        }
+      if (notifError) {
+        console.error("Failed to create notification:", notifError);
+      } else {
+        console.log("✅ Notification created successfully:", notifData);
       }
 
       return data;

@@ -9,10 +9,14 @@ import { showDesktopNotification } from "@/lib/desktopNotifications";
 export interface Notification {
   id: string;
   user_id: string;
-  type: string;
   title: string;
   message: string;
+  type: string;
+  priority: string;
   is_read: boolean;
+  related_entity_type?: string;
+  related_entity_id?: string;
+  action_url?: string;
   created_at: string;
   updated_at: string;
 }
@@ -67,6 +71,7 @@ export function useNotifications() {
             toast({
               title: notification.title,
               description: notification.message,
+              variant: notification.priority === "high" ? "destructive" : "default",
             });
 
             // Show desktop notification
