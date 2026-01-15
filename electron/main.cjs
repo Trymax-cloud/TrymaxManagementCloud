@@ -14,26 +14,45 @@ function createWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js')
     },
-    icon: path.join(__dirname, '../public/icon.png'), // Optional: add icon later
+    icon: path.join(__dirname, '../public/favicon.ico'), // Use existing favicon
     show: false // Don't show until ready
   });
 
   // Load the app
   const isDev = process.env.NODE_ENV === 'development';
-  const startUrl = isDev 
-    ? 'http://localhost:5173' 
-    : `file://${path.join(__dirname, '../dist/index.html')}`;
+  let startUrl;
+  
+  if (isDev) {
+    startUrl = 'http://localhost:5173';
+  } else {
+    // For production, load directly from file path
+    startUrl = path.join(__dirname, '../dist/index.html');
+  }
+  
+  console.log('Starting Electron app with URL:', startUrl);
   
   mainWindow.loadURL(startUrl);
 
   // Show window when ready
   mainWindow.once('ready-to-show', () => {
+    console.log('Electron window ready to show');
     mainWindow.show();
   });
 
   // Handle window closed
   mainWindow.on('closed', () => {
+    console.log('Electron window closed');
     mainWindow = null;
+  });
+
+  // Handle navigation errors
+  mainWindow.webContents.on('did-fail-load', (event, errorCode) => {
+    console.error('Failed to load:', errorCode);
+  });
+
+  // Handle console messages from renderer
+  mainWindow.webContents.on('console-message', (event, level, message) => {
+    console.log(`Renderer [${level}]:`, message);
   });
 }
 
