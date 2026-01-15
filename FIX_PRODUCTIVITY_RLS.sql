@@ -12,7 +12,7 @@ CREATE POLICY "Directors can view all profiles"
 ON public.profiles
 FOR SELECT
 TO authenticated
-USING (has_role(auth.uid(), 'director'::app_role));
+USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'director'));
 
 CREATE POLICY "Users can view own profile"
 ON public.profiles
@@ -37,7 +37,7 @@ CREATE POLICY "Directors can view all assignments"
 ON public.assignments
 FOR SELECT
 TO authenticated
-USING (has_role(auth.uid(), 'director'::app_role));
+USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'director'));
 
 CREATE POLICY "Users can view own assignments"
 ON public.assignments
@@ -62,7 +62,7 @@ CREATE POLICY "Directors can view all attendance"
 ON public.attendance
 FOR SELECT
 TO authenticated
-USING (has_role(auth.uid(), 'director'::app_role));
+USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'director'));
 
 CREATE POLICY "Users can view own attendance"
 ON public.attendance
@@ -85,7 +85,7 @@ SELECT
   roles,
   qual,
   CASE 
-    WHEN qual LIKE '%has_role.*director%' THEN 'DIRECTOR_ACCESS ✅'
+    WHEN qual LIKE '%EXISTS.*user_roles.*director%' THEN 'DIRECTOR_ACCESS ✅'
     WHEN qual LIKE '%auth.uid() = id%' OR qual LIKE '%assignee_id = auth.uid()' OR qual LIKE '%user_id = auth.uid()' THEN 'USER_ACCESS ✅'
     WHEN qual IS NULL THEN 'PUBLIC_ACCESS ⚠️'
     ELSE 'OTHER ❌'
@@ -99,17 +99,16 @@ ORDER BY tablename, policyname;
 SELECT 
   'POST-FIX: profiles Director Test' as test_description,
   COUNT(*) as accessible_records
-FROM profiles 
-WHERE has_role((select auth.uid()), 'director'::app_role) AND role = 'employee';
+FROM profiles p
+JOIN user_roles ur ON p.id = ur.user_id
+WHERE ur.role = 'employee';
 
 SELECT 
   'POST-FIX: assignments Director Test' as test_description,
   COUNT(*) as accessible_records
-FROM assignments 
-WHERE has_role((select auth.uid()), 'director'::app_role);
+FROM assignments;
 
 SELECT 
   'POST-FIX: attendance Director Test' as test_description,
   COUNT(*) as accessible_records
-FROM attendance 
-WHERE has_role((select auth.uid()), 'director'::app_role);
+FROM attendance;
