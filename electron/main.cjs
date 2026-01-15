@@ -29,9 +29,9 @@ function createWindow() {
     startUrl = path.join(__dirname, '../dist/index.html');
   }
   
-  console.log('Starting Electron app with URL:', startUrl);
+  console.log('Starting Electron app with file:', startUrl);
   
-  mainWindow.loadURL(startUrl);
+  mainWindow.loadFile(startUrl);
 
   // Show window when ready
   mainWindow.once('ready-to-show', () => {
