@@ -33,10 +33,11 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mode === "development" && componentTagger(),
-    VitePWA({
+    // Disable PWA for Electron builds
+    (mode === "development" ? VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "icons/*.png"],
-      manifest: false, // Use the manifest.json from public folder
+      manifest: false, // Use manifest.json from public folder
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
         runtimeCaching: [
@@ -56,7 +57,7 @@ export default defineConfig(({ mode }) => ({
       devOptions: {
         enabled: false,
       },
-    }),
+    }) : null),
   ].filter(Boolean),
   resolve: {
     alias: {

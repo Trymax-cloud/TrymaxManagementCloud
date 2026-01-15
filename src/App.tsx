@@ -69,7 +69,7 @@ function AppContent() {
     <AppLoader isAppReady={isAppReady}>
       <RealtimeProvider>
         <Suspense fallback={<PageLoader />}>
-          <Routes>
+          <Router>
             <Route path="/" element={<Auth />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
@@ -90,7 +90,7 @@ function AppContent() {
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             
             <Route path="*" element={<NotFound />} />
-          </Routes>
+          </Router>
         </Suspense>
       </RealtimeProvider>
     </AppLoader>
