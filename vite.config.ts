@@ -22,8 +22,9 @@ export default defineConfig(({ mode }) => ({
           vendor: ['react', 'react-dom'],
           router: ['react-router-dom'],
           ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
-        },
-      },
+          supabase: ['@supabase/supabase-js']
+        }
+      }
     },
     // Ensure proper SPA handling
     target: 'esnext',
@@ -33,8 +34,8 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mode === "development" && componentTagger(),
-    // Disable PWA for Electron builds
-    (mode === "development" ? VitePWA({
+    // Disable PWA for Electron builds (production only)
+    mode === "production" ? null : VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "icons/*.png"],
       manifest: false, // Use manifest.json from public folder
@@ -57,7 +58,7 @@ export default defineConfig(({ mode }) => ({
       devOptions: {
         enabled: false,
       },
-    }) : null),
+    }),
   ].filter(Boolean),
   resolve: {
     alias: {

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Notification } = require('electron');
+const { app, BrowserWindow, ipcMain, Notification, Menu } = require('electron');
 const path = require('path');
 
 // Keep a global reference of the window object
@@ -9,13 +9,22 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    minWidth: 800,
+    minHeight: 600,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      enableRemoteModule: false,
+      preload: path.join(__dirname, 'preload.js'),
+      // Content Security Policy for production
+      additionalArguments: [
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor'
+      ]
     },
     icon: path.join(__dirname, '../public/favicon.ico'), // Use existing favicon
-    show: false // Don't show until ready
+    show: false, // Don't show until ready-to-show
+    titleBarStyle: 'default'
   });
 
   // Load the app
@@ -37,6 +46,53 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     console.log('Electron window ready to show');
     mainWindow.show();
+    
+    // Set up application menu
+    const isDev = process.env.NODE_ENV === 'development';
+    const template = [
+      {
+        label: 'File',
+        submenu: [
+          {
+            label: 'Quit',
+            accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
+            click: () => {
+              app.quit();
+            }
+          }
+        ]
+      },
+      {
+        label: 'View',
+        submenu: [
+          {
+            label: 'Reload',
+            accelerator: 'CmdOrCtrl+R',
+            click: () => {
+              mainWindow.webContents.reload();
+            }
+          },
+          {
+            label: 'Toggle Full Screen',
+            accelerator: 'F11',
+            click: () => {
+              mainWindow.setFullScreen(!mainWindow.isFullScreen());
+            }
+          },
+          // Only show DevTools in development
+          ...(isDev ? [{
+            label: 'Toggle Developer Tools',
+            accelerator: 'F12',
+            click: () => {
+              mainWindow.webContents.toggleDevTools();
+            }
+          }] : [])
+        ]
+      }
+    ];
+    
+    const menu = Menu.buildFromTemplate(template);
+    Menu.setApplicationMenu(menu);
   });
 
   // Handle window closed
