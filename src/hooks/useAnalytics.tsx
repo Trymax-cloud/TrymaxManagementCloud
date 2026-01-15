@@ -144,19 +144,26 @@ export function useEmployeeProductivity(dateRange: DateRange) {
       const fromDate = format(dateRange.from, 'yyyy-MM-dd');
       const toDate = format(dateRange.to, 'yyyy-MM-dd');
 
-      // Get all profiles
+      // Check if user is director
+      const userRole = user?.user_metadata?.role;
+      if (userRole !== 'director') {
+        console.log('🔍 Employee productivity: User is not a director, returning empty array');
+        return [];
+      }
+
+      // Get all profiles (employees only)
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, name, email');
+        .select('id, name, email')
+        .eq('role', 'employee'); // Only get employees
 
       if (profilesError) throw profilesError;
 
-      // Get assignments in date range
+      // Get assignments that were created, completed, or worked on within the date range
       const { data: assignments, error: assignmentsError } = await supabase
         .from('assignments')
         .select('*')
-        .gte('created_date', fromDate)
-        .lte('created_date', toDate);
+        .or(`created_date.gte.${fromDate},created_date.lte.${toDate},completion_date.gte.${fromDate},completion_date.lte.${toDate}`);
 
       if (assignmentsError) throw assignmentsError;
 
@@ -169,8 +176,16 @@ export function useEmployeeProductivity(dateRange: DateRange) {
 
       if (attendanceError) throw attendanceError;
 
+      console.log('🔍 Employee productivity data:', {
+        userRole,
+        profilesCount: profiles?.length,
+        assignmentsCount: assignments?.length,
+        attendanceCount: attendance?.length,
+        dateRange: { fromDate, toDate }
+      });
+
       // Calculate productivity per employee
-      return profiles?.map(profile => {
+      const productivityData = profiles?.map(profile => {
         const userAssignments = assignments?.filter(a => a.assignee_id === profile.id) || [];
         const userAttendance = attendance?.filter(a => a.user_id === profile.id) || [];
 
@@ -186,8 +201,12 @@ export function useEmployeeProductivity(dateRange: DateRange) {
           attendance_half_day: userAttendance.filter(a => a.status === 'half_day').length,
         };
       }) || [];
+
+      console.log('🔍 Final productivity data:', productivityData);
+
+      return productivityData;
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && user?.user_metadata?.role === 'director',
   });
 }
 
