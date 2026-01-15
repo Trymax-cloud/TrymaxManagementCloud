@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { useMyPayments, useUpdatePayment } from "@/hooks/usePayments";
+import { useMyPayments, useUpdatePayment, usePaymentRealtime } from "@/hooks/usePayments";
 import { useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -25,6 +25,9 @@ export default function MyPayments() {
   const { data: payments, isLoading } = useMyPayments();
   const { data: projects } = useProjects();
   const updatePayment = useUpdatePayment();
+  
+  // Enable real-time updates
+  usePaymentRealtime();
   
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");

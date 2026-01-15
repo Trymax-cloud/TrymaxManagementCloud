@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useToast } from "./use-toast";
+import { useEffect } from "react";
 
 export interface ClientPayment {
   id: string;
@@ -27,6 +28,46 @@ export interface PaymentWithDetails extends ClientPayment {
     id: string;
     name: string;
   };
+}
+
+// Real-time payment updates hook
+export function usePaymentRealtime() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Set up real-time subscription for payment changes
+    const channel = supabase
+      .channel('payment_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all changes (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'client_payments',
+          filter: user?.user_metadata?.role === 'director' ? undefined : `responsible_user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('🔄 Real-time payment change:', payload);
+          
+          // Invalidate relevant queries to trigger refetch
+          queryClient.invalidateQueries({ queryKey: ["payments"] });
+          queryClient.invalidateQueries({ queryKey: ["my-payments"] });
+          queryClient.invalidateQueries({ queryKey: ["overdue-payments"] });
+          queryClient.invalidateQueries({ queryKey: ["payment-analytics"] });
+          queryClient.invalidateQueries({ queryKey: ["payment-trends"] });
+          queryClient.invalidateQueries({ queryKey: ["client-payment-summaries"] });
+          queryClient.invalidateQueries({ queryKey: ["upcoming-payment-reminders"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, queryClient]);
 }
 
 export function usePayments() {

@@ -9,7 +9,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { usePayments, useMyPayments, useOverduePayments } from "@/hooks/usePayments";
+import { usePayments, useMyPayments, useOverduePayments, usePaymentRealtime } from "@/hooks/usePayments";
 import { useProfiles } from "@/hooks/useProfiles";
 import { useProjects } from "@/hooks/useProjects";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -33,6 +33,9 @@ export default function Payments() {
   const { sendReminders, isLoading: sendingReminders } = usePaymentReminders();
   const { deletePayment, isLoading: deletingPayment } = useDeletePayment();
   const sendPaymentReminders = useSendPaymentReminders();
+  
+  // Enable real-time updates
+  usePaymentRealtime();
   
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");

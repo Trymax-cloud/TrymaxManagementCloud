@@ -11,6 +11,7 @@ import {
   usePaymentAnalytics,
   DateRange 
 } from '@/hooks/useAnalytics';
+import { usePaymentRealtime } from '@/hooks/usePayments';
 import { AnalyticsSummary } from '@/components/reports/AnalyticsSummary';
 import { 
   BarChart, 
@@ -69,6 +70,9 @@ export default function Reports() {
     to: endOfMonth(new Date())
   }));
   const [rangePreset, setRangePreset] = useState('this_month');
+
+  // Enable real-time updates
+  usePaymentRealtime();
 
   const { data: projectData, isLoading: projectLoading } = useProjectAnalytics(dateRange);
   const { data: employeeData, isLoading: employeeLoading } = useEmployeeProductivity(dateRange);
