@@ -262,13 +262,13 @@ function getSubject(reminderType: string, clientName: string): string {
   
   switch (reminderType) {
     case 'overdue':
-      return `Overdue Payment Reminder - ${name}`
+      return `Action Required: Overdue Payment Collection - ${name}`
     case '24_hours':
-      return `Urgent: Payment due tomorrow - ${name}`
+      return `Urgent: Payment Collection Due Tomorrow - ${name}`
     case '72_hours':
-      return `Payment Reminder: Invoice due in 72 hours - ${name}`
+      return `Reminder: Payment Collection Due in 72 Hours - ${name}`
     default:
-      return `Payment Reminder - ${name}`
+      return `Payment Collection Reminder - ${name}`
   }
 }
 
@@ -292,9 +292,9 @@ function generatePaymentReminderEmail(data: {
   }
   
   const urgencyMessages = {
-    overdue: 'Your payment is now overdue. Please make your payment as soon as possible.',
-    '24_hours': 'Your payment is due tomorrow. Please ensure your payment is made on time.',
-    '72_hours': 'This is a friendly reminder that your payment is due in 72 hours.'
+    overdue: 'Payment collection is now overdue. Please contact the client immediately to collect the payment.',
+    '24_hours': 'Payment collection is due tomorrow. Please ensure you collect the payment on time.',
+    '72_hours': 'This is a friendly reminder that payment collection is due in 72 hours.'
   }
   
   const color = urgencyColors[reminderType as keyof typeof urgencyColors] || '#3b82f6'
@@ -322,35 +322,36 @@ function generatePaymentReminderEmail(data: {
     <body>
       <div class="container">
         <div class="header">
-          <h1>💳 Payment Reminder</h1>
-          ${reminderType === 'overdue' ? '<p>URGENT - PAYMENT OVERDUE</p>' : ''}
+          <h1>💰 Payment Collection Reminder</h1>
+          ${reminderType === 'overdue' ? '<p>URGENT - COLLECTION OVERDUE</p>' : ''}
         </div>
         <div class="content">
-          <p>Hi ${clientName},</p>
+          <p>Hi ${responsibleName || 'Team Member'},</p>
+          <p>This is a reminder to collect payment from <strong>${clientName}</strong>.</p>
           <p>${message}</p>
           
           <div class="payment-details">
+            <p><strong>Client:</strong> ${clientName}</p>
             <p><strong>Invoice Amount:</strong> ₹${invoiceAmount.toFixed(2)}</p>
             <p><strong>Amount Paid:</strong> ₹${amountPaid.toFixed(2)}</p>
-            <p class="amount"><strong>Balance Due:</strong> ₹${balance.toFixed(2)}</p>
+            <p class="amount"><strong>Balance to Collect:</strong> ₹${balance.toFixed(2)}</p>
             <p class="due-date ${reminderType === 'overdue' ? 'overdue' : ''}">
-              <strong>Due Date:</strong> ${due.toLocaleDateString('en-US', { 
+              <strong>Collection Due Date:</strong> ${due.toLocaleDateString('en-US', { 
                 weekday: 'long', 
                 year: 'numeric', 
                 month: 'long', 
                 day: 'numeric' 
               })}
             </p>
-            ${reminderType === 'overdue' ? `<p class="overdue">OVERDUE BY ${Math.floor((new Date().getTime() - due.getTime()) / (1000 * 60 * 60 * 24))} days</p>` : ''}
-            ${responsibleName ? `<p><strong>Responsible:</strong> ${responsibleName}</p>` : ''}
+            ${reminderType === 'overdue' ? `<p class="overdue">COLLECTION OVERDUE BY ${Math.floor((new Date().getTime() - due.getTime()) / (1000 * 60 * 60 * 24))} days</p>` : ''}
           </div>
           
-          <p>If you have already made this payment, please disregard this reminder.</p>
+          <p>Please contact the client to arrange payment collection as soon as possible.</p>
           
-          <p>To view your payment details or make a payment online:</p>
+          <p>To view payment details and update status:</p>
           <a href="${appUrl}" class="button">View Payment Details</a>
           
-          <p>If you have any questions or need to arrange a payment plan, please don't hesitate to contact us.</p>
+          <p>If you have already collected this payment, please update the payment status in the system.</p>
         </div>
         <div class="footer">
           <p>This email was sent by EWPM System</p>
