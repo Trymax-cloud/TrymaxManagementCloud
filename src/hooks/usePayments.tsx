@@ -197,24 +197,38 @@ export function useUpdatePayment() {
       id,
       status,
       amount_paid,
-      ...otherUpdates
-    }: Partial<CreatePaymentInput> & { 
-      id: string; 
-      status?: ClientPayment["status"];
-      amount_paid?: number;
-    }) => {
+    }: { 
+        id: string; 
+        status?: ClientPayment["status"];
+        amount_paid?: number;
+      }) => {
+      console.log("🔄 Updating payment with data:", { id, status, amount_paid });
+      
+      const updateData: any = {};
+      
+      if (status !== undefined) {
+        updateData.status = status;
+      }
+      
+      if (amount_paid !== undefined) {
+        updateData.amount_paid = amount_paid;
+      }
+      
+      console.log("📤 Sending update data:", updateData);
+      
       const { data, error } = await supabase
         .from("client_payments")
-        .update({
-          ...otherUpdates,
-          ...(status && { status }),
-          ...(amount_paid !== undefined && { amount_paid }),
-        })
+        .update(updateData)
         .eq("id", id)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Supabase error:", error);
+        throw error;
+      }
+      
+      console.log("✅ Update successful:", data);
       return data;
     },
     onSuccess: () => {

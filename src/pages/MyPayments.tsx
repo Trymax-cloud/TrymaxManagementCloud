@@ -79,19 +79,31 @@ export default function MyPayments() {
         invoiceAmount: payment.invoice_amount
       });
       
-      await updatePayment.mutateAsync({
+      const result = await updatePayment.mutateAsync({
         id: payment.id,
         status: newStatus,
         amount_paid: amountPaid || payment.amount_paid,
       });
       
-      console.log("✅ Payment updated successfully");
-    } catch (error) {
+      console.log("✅ Payment updated successfully:", result);
+    } catch (error: any) {
       console.error("❌ Failed to update payment:", error);
+      
+      let errorMessage = "Failed to update payment status. Please try again.";
+      
+      if (error?.message) {
+        errorMessage = `Update failed: ${error.message}`;
+      }
+      
+      if (error?.code) {
+        console.error("Error code:", error.code);
+        errorMessage = `Database error: ${error.code}`;
+      }
+      
       toast({
         variant: "destructive",
         title: "Update Failed",
-        description: "Failed to update payment status. Please try again.",
+        description: errorMessage,
       });
     }
   };
