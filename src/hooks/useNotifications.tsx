@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useMemo } from "react";
 import { toast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/SettingsContext";
-import { showDesktopNotification } from "@/lib/desktopNotifications";
+import { desktopNotify } from "@/utils/desktopNotify";
 
 export interface Notification {
   id: string;
@@ -75,10 +75,7 @@ export function useNotifications() {
             });
 
             // Show desktop notification
-            showDesktopNotification(notification.title, {
-              body: notification.message,
-              tag: notification.id, // Prevent duplicates
-            });
+            desktopNotify(notification.title, notification.message);
           } else {
             console.log("🔔 NOTIFICATION BLOCKED BY SETTINGS");
           }

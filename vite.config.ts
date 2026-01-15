@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
     historyApiFallback: true,
   },
+  base: mode === 'development' ? '/' : './',
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
