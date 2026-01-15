@@ -1,7 +1,7 @@
 {
-  "appId": "com.ewpm.app",
-  "productName": "EWPM",
-  "copyright": "Copyright © 2026 EWPM",
+  "appId": "com.trymaxfurnaces.trymaxmanagement",
+  "productName": "TrymaxManagement",
+  "copyright": "Copyright © 2026 Trymax Furnaces",
   "directories": {
     "output": "release"
   },
@@ -30,7 +30,7 @@
     ],
     "icon": "public/icon.ico",
     "requestedExecutionLevel": "asInvoker",
-    "publisherName": "EWPM"
+    "publisherName": "Trymax Furnaces"
   },
   "mac": {
     "target": [
@@ -65,7 +65,7 @@
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
-    "shortcutName": "EWPM"
+    "shortcutName": "TrymaxManagement"
   },
   "publish": {
     "provider": "github",

@@ -1,8 +1,8 @@
 {
-  "name": "vite_react_shadcn_ts",
-  "version": "0.0.0",
-  "description": "EWPM - Employee Workforce and Project Management System",
-  "author": "EWPM Team",
+  "name": "TrymaxManagement",
+  "version": "1.0.0",
+  "description": "EWPM-Employee Work and Performance Management",
+  "author": "Trymax Furnaces(Avi Patle)",
   "private": true,
   "main": "electron/main.cjs",
   "homepage": "./",

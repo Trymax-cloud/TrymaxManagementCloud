@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Notification, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, Notification, Menu, globalShortcut } = require('electron');
 const path = require('path');
 
 // Keep a global reference of the window object
@@ -7,6 +7,7 @@ let mainWindow;
 function createWindow() {
   // Create the browser window
   mainWindow = new BrowserWindow({
+    title: "TrymaxManagement",
     width: 1200,
     height: 800,
     minWidth: 800,
@@ -47,52 +48,41 @@ function createWindow() {
     console.log('Electron window ready to show');
     mainWindow.show();
     
-    // Set up application menu
-    const isDev = process.env.NODE_ENV === 'development';
-    const template = [
-      {
-        label: 'File',
-        submenu: [
-          {
-            label: 'Quit',
-            accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
-            click: () => {
-              app.quit();
-            }
-          }
-        ]
-      },
-      {
-        label: 'View',
-        submenu: [
-          {
-            label: 'Reload',
-            accelerator: 'CmdOrCtrl+R',
-            click: () => {
-              mainWindow.webContents.reload();
-            }
-          },
-          {
-            label: 'Toggle Full Screen',
-            accelerator: 'F11',
-            click: () => {
-              mainWindow.setFullScreen(!mainWindow.isFullScreen());
-            }
-          },
-          // Only show DevTools in development
-          ...(isDev ? [{
-            label: 'Toggle Developer Tools',
-            accelerator: 'F12',
-            click: () => {
-              mainWindow.webContents.toggleDevTools();
-            }
-          }] : [])
-        ]
-      }
-    ];
+    // Completely remove menu bar
+    Menu.setApplicationMenu(null);
     
-    const menu = Menu.buildFromTemplate(template);
-    Menu.setApplicationMenu(menu);
+    // Register global shortcuts for functionality
+    const isDev = process.env.NODE_ENV === 'development';
+    
+    // F11 - Toggle Full Screen
+    globalShortcut.register('F11', () => {
+      if (mainWindow) {
+        mainWindow.setFullScreen(!mainWindow.isFullScreen());
+      }
+    });
+    
+    // Ctrl+R - Reload
+    globalShortcut.register('CommandOrControl+R', () => {
+      if (mainWindow) {
+        mainWindow.webContents.reload();
+      }
+    });
+    
+    // Ctrl+Shift+R - Hard Reload (clear cache)
+    globalShortcut.register('CommandOrControl+Shift+R', () => {
+      if (mainWindow) {
+        mainWindow.webContents.reloadIgnoringCache();
+      }
+    });
+    
+    // F12 - DevTools (development only)
+    if (isDev) {
+      globalShortcut.register('F12', () => {
+        if (mainWindow) {
+          mainWindow.webContents.toggleDevTools();
+        }
+      });
+    }
   });
 
   // Handle window closed
