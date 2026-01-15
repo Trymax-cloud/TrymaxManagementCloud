@@ -37,6 +37,7 @@ const Projects = lazyWithRetry(() => import("./pages/Projects"));
 const Employees = lazyWithRetry(() => import("./pages/Employees"));
 const Ratings = lazyWithRetry(() => import("./pages/Ratings"));
 const Payments = lazyWithRetry(() => import("./pages/Payments"));
+const MyPayments = lazyWithRetry(() => import("./pages/MyPayments"));
 const DailySummary = lazyWithRetry(() => import("./pages/DailySummary"));
 const Notifications = lazyWithRetry(() => import("./pages/Notifications"));
 const Settings = lazyWithRetry(() => import("./pages/Settings"));
@@ -72,6 +73,7 @@ function AppContent() {
             <Route path="/employees" element={<ProtectedRoute allowedRoles={["director"]}><Employees /></ProtectedRoute>} />
             <Route path="/ratings" element={<ProtectedRoute><Ratings /></ProtectedRoute>} />
             <Route path="/payments" element={<ProtectedRoute allowedRoles={["director"]}><Payments /></ProtectedRoute>} />
+            <Route path="/my-payments" element={<ProtectedRoute><MyPayments /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute allowedRoles={["director"]}><Reports /></ProtectedRoute>} />
             <Route path="/daily-summary" element={<ProtectedRoute><DailySummary /></ProtectedRoute>} />
             <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />

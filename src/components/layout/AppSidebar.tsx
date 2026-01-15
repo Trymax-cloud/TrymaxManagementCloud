@@ -37,6 +37,7 @@ const employeeMenuItems = [
   { title: "My Assignments", url: "/assignments", icon: ClipboardList },
   { title: "Projects", url: "/projects", icon: FolderKanban },
   { title: "My Ratings", url: "/ratings", icon: Star },
+  { title: "My Payments", url: "/my-payments", icon: CreditCard },
   { title: "Daily Summary", url: "/daily-summary", icon: FileText },
   { title: "Messages", url: "/messages", icon: MessageSquare },
   { title: "Meetings", url: "/meetings", icon: CalendarDays },
