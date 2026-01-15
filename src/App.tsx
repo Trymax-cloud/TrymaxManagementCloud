@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Routes, Route, BrowserRouter, HashRouter } from "react-router-dom";
+import { Routes, Route, HashRouter } from "react-router-dom";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { OfflineIndicator } from "@/components/pwa/OfflineIndicator";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
@@ -29,13 +29,10 @@ const lazyWithRetry = (importFn: () => Promise<{ default: React.ComponentType }>
   );
 };
 
-// Detect if running in Electron
-const isElectron = typeof window !== 'undefined' && 
-  (window.navigator.userAgent.includes('Electron') || 
-   window.location.protocol === 'file:');
-
-// Conditional router based on environment
-const Router = isElectron ? HashRouter : BrowserRouter;
+// Use HashRouter for Electron compatibility
+const AppRouter = ({ children }: { children: React.ReactNode }) => {
+  return <HashRouter>{children}</HashRouter>;
+};
 
 // Lazy load pages for better performance with retry on chunk load failure
 const Auth = lazyWithRetry(() => import("./pages/Auth"));
@@ -69,7 +66,7 @@ function AppContent() {
     <AppLoader isAppReady={isAppReady}>
       <RealtimeProvider>
         <Suspense fallback={<PageLoader />}>
-          <Router>
+          <AppRouter>
             <Route path="/" element={<Auth />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
@@ -90,7 +87,7 @@ function AppContent() {
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             
             <Route path="*" element={<NotFound />} />
-          </Router>
+          </AppRouter>
         </Suspense>
       </RealtimeProvider>
     </AppLoader>
