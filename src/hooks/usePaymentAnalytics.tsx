@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
+import { useUserRole } from "./useUserRole";
 import type { ClientPayment } from "./usePayments";
 
 export interface PaymentAnalytics {
@@ -35,13 +36,19 @@ export interface ClientPaymentSummary {
 // Hook to get payment analytics
 export function usePaymentAnalytics() {
   const { user } = useAuth();
+  const { isDirector } = useUserRole();
 
   return useQuery({
     queryKey: ["payment-analytics"],
     queryFn: async () => {
-      const { data: payments, error } = await supabase
-        .from("client_payments")
-        .select("*");
+      let query = supabase.from("client_payments").select("*");
+      
+      // Filter by role: Directors see all, Employees see only their responsible payments
+      if (!isDirector) {
+        query = query.eq("responsible_user_id", user!.id);
+      }
+      
+      const { data: payments, error } = await query;
 
       if (error) throw error;
 
@@ -103,14 +110,19 @@ export function usePaymentAnalytics() {
 // Hook to get payment trends (last 6 months)
 export function usePaymentTrends() {
   const { user } = useAuth();
+  const { isDirector } = useUserRole();
 
   return useQuery({
     queryKey: ["payment-trends"],
     queryFn: async () => {
-      const { data: payments, error } = await supabase
-        .from("client_payments")
-        .select("*")
-        .order("invoice_date", { ascending: true });
+      let query = supabase.from("client_payments").select("*").order("invoice_date", { ascending: true });
+      
+      // Filter by role: Directors see all, Employees see only their responsible payments
+      if (!isDirector) {
+        query = query.eq("responsible_user_id", user!.id);
+      }
+      
+      const { data: payments, error } = await query;
 
       if (error) throw error;
 
@@ -140,13 +152,19 @@ export function usePaymentTrends() {
 // Hook to get client payment summaries
 export function useClientPaymentSummaries() {
   const { user } = useAuth();
+  const { isDirector } = useUserRole();
 
   return useQuery({
     queryKey: ["client-payment-summaries"],
     queryFn: async () => {
-      const { data: payments, error } = await supabase
-        .from("client_payments")
-        .select("*");
+      let query = supabase.from("client_payments").select("*");
+      
+      // Filter by role: Directors see all, Employees see only their responsible payments
+      if (!isDirector) {
+        query = query.eq("responsible_user_id", user!.id);
+      }
+      
+      const { data: payments, error } = await query;
 
       if (error) throw error;
 
@@ -211,6 +229,7 @@ export function useClientPaymentSummaries() {
 // Hook to get upcoming payment reminders
 export function useUpcomingPaymentReminders(daysAhead: number = 7) {
   const { user } = useAuth();
+  const { isDirector } = useUserRole();
 
   return useQuery({
     queryKey: ["upcoming-payment-reminders", daysAhead],
@@ -220,13 +239,20 @@ export function useUpcomingPaymentReminders(daysAhead: number = 7) {
       const todayStr = now.toISOString().split("T")[0];
       const futureDateStr = futureDate.toISOString().split("T")[0];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("client_payments")
         .select("*")
         .in("status", ["pending", "partially_paid"])
         .gte("due_date", todayStr)
         .lte("due_date", futureDateStr)
         .order("due_date", { ascending: true });
+      
+      // Filter by role: Directors see all, Employees see only their responsible payments
+      if (!isDirector) {
+        query = query.eq("responsible_user_id", user!.id);
+      }
+      
+      const { data, error } = await query;
 
       if (error) throw error;
       return data as ClientPayment[];

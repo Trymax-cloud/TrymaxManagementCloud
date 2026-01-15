@@ -168,6 +168,11 @@ export function useCreatePayment() {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
       queryClient.invalidateQueries({ queryKey: ["my-payments"] });
       queryClient.invalidateQueries({ queryKey: ["overdue-payments"] });
+      // Also invalidate analytics queries
+      queryClient.invalidateQueries({ queryKey: ["payment-analytics"] });
+      queryClient.invalidateQueries({ queryKey: ["payment-trends"] });
+      queryClient.invalidateQueries({ queryKey: ["client-payment-summaries"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming-payment-reminders"] });
       toast({
         title: "Payment created",
         description: "The payment record has been created successfully.",
@@ -211,6 +216,11 @@ export function useUpdatePayment() {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
       queryClient.invalidateQueries({ queryKey: ["my-payments"] });
       queryClient.invalidateQueries({ queryKey: ["overdue-payments"] });
+      // Also invalidate analytics queries
+      queryClient.invalidateQueries({ queryKey: ["payment-analytics"] });
+      queryClient.invalidateQueries({ queryKey: ["payment-trends"] });
+      queryClient.invalidateQueries({ queryKey: ["client-payment-summaries"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming-payment-reminders"] });
       toast({
         title: "Payment updated",
         description: "The payment has been updated successfully.",
@@ -244,6 +254,11 @@ export function useDeletePayment() {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
       queryClient.invalidateQueries({ queryKey: ["my-payments"] });
       queryClient.invalidateQueries({ queryKey: ["overdue-payments"] });
+      // Also invalidate analytics queries
+      queryClient.invalidateQueries({ queryKey: ["payment-analytics"] });
+      queryClient.invalidateQueries({ queryKey: ["payment-trends"] });
+      queryClient.invalidateQueries({ queryKey: ["client-payment-summaries"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming-payment-reminders"] });
       toast({
         title: "Payment deleted",
         description: "The payment has been removed.",
