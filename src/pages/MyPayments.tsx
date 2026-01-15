@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { format, isPast, isToday, addDays } from "date-fns";
+import { format, isPast, addDays } from "date-fns";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { useMyPayments, useUpdatePayment } from "@/hooks/usePayments";
 import { useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,6 +29,11 @@ export default function MyPayments() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
+  const [partialPaymentDialog, setPartialPaymentDialog] = useState<{
+    open: boolean;
+    payment: ClientPayment | null;
+  }>({ open: false, payment: null });
+  const [partialAmount, setPartialAmount] = useState<string>("");
 
   const getProjectName = (projectId: string | null) => {
     if (!projectId) return undefined;
@@ -122,9 +129,40 @@ export default function MyPayments() {
     if (newStatus === "paid") {
       // Mark as fully paid
       await handleStatusUpdate(payment, newStatus, payment.invoice_amount);
+    } else if (newStatus === "partially_paid") {
+      // Open partial payment dialog
+      setPartialPaymentDialog({ open: true, payment });
+      setPartialAmount(payment.amount_paid.toString());
     } else {
       await handleStatusUpdate(payment, newStatus);
     }
+  };
+
+  const handlePartialPayment = async () => {
+    if (!partialPaymentDialog.payment) return;
+    
+    const amount = parseFloat(partialAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Amount",
+        description: "Please enter a valid payment amount.",
+      });
+      return;
+    }
+    
+    if (amount > partialPaymentDialog.payment.invoice_amount) {
+      toast({
+        variant: "destructive",
+        title: "Amount Too High",
+        description: "Payment amount cannot exceed the invoice amount.",
+      });
+      return;
+    }
+    
+    await handleStatusUpdate(partialPaymentDialog.payment, "partially_paid", amount);
+    setPartialPaymentDialog({ open: false, payment: null });
+    setPartialAmount("");
   };
 
   const getStatusColor = (status: string) => {
@@ -213,16 +251,64 @@ export default function MyPayments() {
             )}
             
             {payment.status === "pending" && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleQuickStatusUpdate(payment, "partially_paid")}
-                className="flex items-center gap-2"
-                disabled={updatePayment.isPending}
-              >
-                <RefreshCw className="h-4 w-4" />
-                Partial Payment
-              </Button>
+              <Dialog open={partialPaymentDialog.open && partialPaymentDialog.payment?.id === payment.id} onOpenChange={(open) => 
+                setPartialPaymentDialog({ open, payment: open ? payment : null })
+              }>
+                <DialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    disabled={updatePayment.isPending}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Partial Payment
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Record Partial Payment</DialogTitle>
+                    <DialogDescription>
+                      Enter the amount received for this payment.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="amount">Amount Received</Label>
+                      <Input
+                        id="amount"
+                        type="number"
+                        placeholder="Enter amount"
+                        value={partialAmount}
+                        onChange={(e) => setPartialAmount(e.target.value)}
+                        min={0}
+                        max={partialPaymentDialog.payment?.invoice_amount || 0}
+                        step={0.01}
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Invoice Amount: {formatCurrency(partialPaymentDialog.payment?.invoice_amount || 0)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Remaining: {formatCurrency((partialPaymentDialog.payment?.invoice_amount || 0) - parseFloat(partialAmount || '0'))}
+                      </p>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setPartialPaymentDialog({ open: false, payment: null })}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handlePartialPayment}
+                        disabled={updatePayment.isPending || !partialAmount || parseFloat(partialAmount) <= 0}
+                      >
+                        {updatePayment.isPending ? "Updating..." : "Update Payment"}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             )}
           </div>
         </CardContent>
