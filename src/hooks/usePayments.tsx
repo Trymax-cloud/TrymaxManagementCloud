@@ -195,7 +195,9 @@ export function useUpdatePayment() {
   return useMutation({
     mutationFn: async ({
       id,
-      ...updates
+      status,
+      amount_paid,
+      ...otherUpdates
     }: Partial<CreatePaymentInput> & { 
       id: string; 
       status?: ClientPayment["status"];
@@ -203,7 +205,11 @@ export function useUpdatePayment() {
     }) => {
       const { data, error } = await supabase
         .from("client_payments")
-        .update(updates)
+        .update({
+          ...otherUpdates,
+          ...(status && { status }),
+          ...(amount_paid !== undefined && { amount_paid }),
+        })
         .eq("id", id)
         .select()
         .single();

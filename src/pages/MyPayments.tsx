@@ -70,13 +70,29 @@ export default function MyPayments() {
 
   const handleStatusUpdate = async (payment: ClientPayment, newStatus: ClientPayment["status"], amountPaid?: number) => {
     try {
+      console.log("🔄 Updating payment:", {
+        id: payment.id,
+        currentStatus: payment.status,
+        newStatus,
+        currentAmountPaid: payment.amount_paid,
+        newAmountPaid: amountPaid || payment.amount_paid,
+        invoiceAmount: payment.invoice_amount
+      });
+      
       await updatePayment.mutateAsync({
         id: payment.id,
         status: newStatus,
         amount_paid: amountPaid || payment.amount_paid,
       });
+      
+      console.log("✅ Payment updated successfully");
     } catch (error) {
-      console.error("Failed to update payment:", error);
+      console.error("❌ Failed to update payment:", error);
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: "Failed to update payment status. Please try again.",
+      });
     }
   };
 
