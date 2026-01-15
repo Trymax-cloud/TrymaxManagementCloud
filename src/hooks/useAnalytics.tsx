@@ -155,7 +155,11 @@ export function useEmployeeProductivity(dateRange: DateRange) {
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, name, email')
-        .eq('role', 'employee'); // Only get employees
+        .in('id', (await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'employee')
+        ).data?.map(ur => ur.user_id) || []);
 
       if (profilesError) throw profilesError;
 
