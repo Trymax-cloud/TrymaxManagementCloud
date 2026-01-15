@@ -204,6 +204,24 @@ export function useUpdatePayment() {
       }) => {
       console.log("🔄 Updating payment with data:", { id, status, amount_paid });
       
+      // First, check if payment exists and user has access
+      const { data: existingPayment, error: fetchError } = await supabase
+        .from("client_payments")
+        .select("id, status, amount_paid, invoice_amount, responsible_user_id")
+        .eq("id", id)
+        .single();
+      
+      if (fetchError) {
+        console.error("❌ Error fetching payment:", fetchError);
+        throw new Error("Payment not found or you don't have permission to update it");
+      }
+      
+      if (!existingPayment) {
+        throw new Error("Payment not found");
+      }
+      
+      console.log("📋 Existing payment:", existingPayment);
+      
       const updateData: any = {};
       
       if (status !== undefined) {
@@ -225,6 +243,9 @@ export function useUpdatePayment() {
 
       if (error) {
         console.error("❌ Supabase error:", error);
+        if (error.code === 'PGRST116') {
+          throw new Error("Payment not found or update failed. Please refresh and try again.");
+        }
         throw error;
       }
       

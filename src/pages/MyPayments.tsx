@@ -92,12 +92,22 @@ export default function MyPayments() {
       let errorMessage = "Failed to update payment status. Please try again.";
       
       if (error?.message) {
-        errorMessage = `Update failed: ${error.message}`;
+        if (error.message.includes("not found") || error.message.includes("permission")) {
+          errorMessage = "Payment not found or you don't have permission to update it. Please refresh the page and try again.";
+        } else if (error.message.includes("refresh and try again")) {
+          errorMessage = error.message;
+        } else {
+          errorMessage = `Update failed: ${error.message}`;
+        }
       }
       
       if (error?.code) {
         console.error("Error code:", error.code);
-        errorMessage = `Database error: ${error.code}`;
+        if (error.code === 'PGRST116') {
+          errorMessage = "Payment update failed. Please refresh the page and try again.";
+        } else {
+          errorMessage = `Database error: ${error.code}`;
+        }
       }
       
       toast({
