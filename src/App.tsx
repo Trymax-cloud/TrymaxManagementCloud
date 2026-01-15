@@ -67,26 +67,28 @@ function AppContent() {
       <RealtimeProvider>
         <Suspense fallback={<PageLoader />}>
           <AppRouter>
-            <Route path="/" element={<Auth />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/unauthorized" element={<Unauthorized />} />
-            
-            {/* Protected Routes */}
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/assignments" element={<ProtectedRoute><Assignments /></ProtectedRoute>} />
-            <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
-            <Route path="/employees" element={<ProtectedRoute allowedRoles={["director"]}><Employees /></ProtectedRoute>} />
-            <Route path="/ratings" element={<ProtectedRoute><Ratings /></ProtectedRoute>} />
-            <Route path="/payments" element={<ProtectedRoute allowedRoles={["director"]}><Payments /></ProtectedRoute>} />
-            <Route path="/my-payments" element={<ProtectedRoute><MyPayments /></ProtectedRoute>} />
-            <Route path="/reports" element={<ProtectedRoute allowedRoles={["director"]}><Reports /></ProtectedRoute>} />
-            <Route path="/daily-summary" element={<ProtectedRoute><DailySummary /></ProtectedRoute>} />
-            <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-            <Route path="/meetings" element={<ProtectedRoute><Meetings /></ProtectedRoute>} />
-            <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-            
-            <Route path="*" element={<NotFound />} />
+            <Routes>
+              <Route path="/" element={<Auth />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/unauthorized" element={<Unauthorized />} />
+              
+              {/* Protected Routes */}
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/assignments" element={<ProtectedRoute><Assignments /></ProtectedRoute>} />
+              <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
+              <Route path="/employees" element={<ProtectedRoute allowedRoles={["director"]}><Employees /></ProtectedRoute>} />
+              <Route path="/ratings" element={<ProtectedRoute><Ratings /></ProtectedRoute>} />
+              <Route path="/payments" element={<ProtectedRoute allowedRoles={["director"]}><Payments /></ProtectedRoute>} />
+              <Route path="/my-payments" element={<ProtectedRoute><MyPayments /></ProtectedRoute>} />
+              <Route path="/reports" element={<ProtectedRoute allowedRoles={["director"]}><Reports /></ProtectedRoute>} />
+              <Route path="/daily-summary" element={<ProtectedRoute><DailySummary /></ProtectedRoute>} />
+              <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+              <Route path="/meetings" element={<ProtectedRoute><Meetings /></ProtectedRoute>} />
+              <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+              
+              <Route path="*" element={<NotFound />} />
+            </Routes>
           </AppRouter>
         </Suspense>
       </RealtimeProvider>
