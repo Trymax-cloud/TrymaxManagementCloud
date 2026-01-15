@@ -167,27 +167,17 @@ export function useEmployeeProductivity(dateRange: DateRange) {
 
       if (assignmentsError) throw assignmentsError;
 
-      // Get attendance in date range
-      const { data: attendance, error: attendanceError } = await supabase
-        .from('attendance')
-        .select('*')
-        .gte('date', fromDate)
-        .lte('date', toDate);
-
-      if (attendanceError) throw attendanceError;
-
+      // Note: attendance table has been removed from schema
       console.log('🔍 Employee productivity data:', {
         userRole,
         profilesCount: profiles?.length,
         assignmentsCount: assignments?.length,
-        attendanceCount: attendance?.length,
         dateRange: { fromDate, toDate }
       });
 
       // Calculate productivity per employee
       const productivityData = profiles?.map(profile => {
         const userAssignments = assignments?.filter(a => a.assignee_id === profile.id) || [];
-        const userAttendance = attendance?.filter(a => a.user_id === profile.id) || [];
 
         return {
           employee_id: profile.id,
@@ -196,9 +186,9 @@ export function useEmployeeProductivity(dateRange: DateRange) {
           tasks_completed: userAssignments.filter(a => a.status === 'completed').length,
           tasks_in_progress: userAssignments.filter(a => a.status === 'in_progress').length,
           total_time_minutes: userAssignments.reduce((sum, a) => sum + (a.total_duration_minutes || 0), 0),
-          attendance_present: userAttendance.filter(a => a.status === 'present').length,
-          attendance_absent: userAttendance.filter(a => a.status === 'absent').length,
-          attendance_half_day: userAttendance.filter(a => a.status === 'half_day').length,
+          attendance_present: 0, // Attendance tracking removed
+          attendance_absent: 0,   // Attendance tracking removed
+          attendance_half_day: 0, // Attendance tracking removed
         };
       }) || [];
 

@@ -44,31 +44,17 @@ SELECT
   roles,
   qual,
   CASE 
-    WHEN qual LIKE '%has_role.*director%' THEN 'DIRECTOR_ACCESS ✅'
-    WHEN qual LIKE '%assignee_id = auth.uid()' THEN 'ASSIGNEE_ACCESS ✅'
-    WHEN qual IS NULL THEN 'PUBLIC_ACCESS ⚠️'
-    ELSE 'OTHER ❌'
+    WHEN qual LIKE '%has_role.*director%' THEN 'DIRECTOR_ACCESS '
+    WHEN qual LIKE '%assignee_id = auth.uid()' THEN 'ASSIGNEE_ACCESS '
+    WHEN qual IS NULL THEN 'PUBLIC_ACCESS '
+    ELSE 'OTHER '
   END as access_type
 FROM pg_policies 
 WHERE schemaname = 'public' AND tablename = 'assignments'
 ORDER BY policyname;
 
--- Check RLS policies for attendance table
-SELECT 
-  'attendance RLS Policies' as table_name,
-  policyname,
-  cmd,
-  roles,
-  qual,
-  CASE 
-    WHEN qual LIKE '%has_role.*director%' THEN 'DIRECTOR_ACCESS ✅'
-    WHEN qual LIKE '%user_id = auth.uid()' THEN 'SELF_ACCESS ✅'
-    WHEN qual IS NULL THEN 'PUBLIC_ACCESS ⚠️'
-    ELSE 'OTHER ❌'
-  END as access_type
-FROM pg_policies 
-WHERE schemaname = 'public' AND tablename = 'attendance'
-ORDER BY policyname;
+-- Note: attendance table has been removed from schema
+-- No RLS policies needed for attendance
 
 -- Test data access for directors
 -- Test profiles access (employees only)
@@ -88,11 +74,13 @@ SELECT
 FROM assignments;
 
 -- Test attendance access (if table exists)
+-- Note: attendance table has been removed from schema
 SELECT 
-  'attendance - Director Access Test' as test_description,
-  COUNT(*) as accessible_records,
-  'Should return all attendance records' as expected_result
-FROM attendance;
+  'attendance - Table Status' as test_description,
+  CASE 
+    WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'attendance' AND table_schema = 'public') THEN 'Table exists ✅'
+    ELSE 'Table does not exist (removed from schema) ⚠️'
+  END as table_status;
 
 -- Check if tables exist and have data
 SELECT 
@@ -103,9 +91,4 @@ UNION ALL
 SELECT 
   'assignments' as table_name,
   (SELECT COUNT(*) FROM assignments) as total_records,
-  (SELECT COUNT(*) FROM assignments WHERE assignee_id IN (SELECT user_id FROM user_roles WHERE role = 'employee')) as employee_records
-UNION ALL
-SELECT 
-  'attendance' as table_name,
-  (SELECT COUNT(*) FROM attendance) as total_records,
-  (SELECT COUNT(*) FROM attendance WHERE user_id IN (SELECT user_id FROM user_roles WHERE role = 'employee')) as employee_records;
+  (SELECT COUNT(*) FROM assignments WHERE assignee_id IN (SELECT user_id FROM user_roles WHERE role = 'employee')) as employee_records;

@@ -52,30 +52,8 @@ TO authenticated
 USING (assignee_id = auth.uid())
 WITH CHECK (assignee_id = auth.uid());
 
--- Fix attendance RLS policies
-DROP POLICY IF EXISTS "Users can view own attendance" ON public.attendance;
-DROP POLICY IF EXISTS "Users can update own attendance" ON public.attendance;
-DROP POLICY IF EXISTS "Directors can view all attendance" ON public.attendance;
-
--- Create proper PERMISSIVE policies for attendance
-CREATE POLICY "Directors can view all attendance"
-ON public.attendance
-FOR SELECT
-TO authenticated
-USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'director'));
-
-CREATE POLICY "Users can view own attendance"
-ON public.attendance
-FOR SELECT
-TO authenticated
-USING (user_id = auth.uid());
-
-CREATE POLICY "Users can update own attendance"
-ON public.attendance
-FOR UPDATE
-TO authenticated
-USING (user_id = auth.uid())
-WITH CHECK (user_id = auth.uid());
+-- Note: attendance table has been removed from schema
+-- No RLS policies needed for attendance
 
 -- Verify all policies were created correctly
 SELECT 
@@ -86,13 +64,13 @@ SELECT
   qual,
   CASE 
     WHEN qual LIKE '%EXISTS.*user_roles.*director%' THEN 'DIRECTOR_ACCESS ✅'
-    WHEN qual LIKE '%auth.uid() = id%' OR qual LIKE '%assignee_id = auth.uid()' OR qual LIKE '%user_id = auth.uid()' THEN 'USER_ACCESS ✅'
+    WHEN qual LIKE '%auth.uid() = id%' OR qual LIKE '%assignee_id = auth.uid()' THEN 'USER_ACCESS ✅'
     WHEN qual IS NULL THEN 'PUBLIC_ACCESS ⚠️'
     ELSE 'OTHER ❌'
   END as access_type
 FROM pg_policies 
 WHERE schemaname = 'public' 
-  AND tablename IN ('profiles', 'assignments', 'attendance')
+  AND tablename IN ('profiles', 'assignments')
 ORDER BY tablename, policyname;
 
 -- Test director access after fixes
@@ -107,8 +85,3 @@ SELECT
   'POST-FIX: assignments Director Test' as test_description,
   COUNT(*) as accessible_records
 FROM assignments;
-
-SELECT 
-  'POST-FIX: attendance Director Test' as test_description,
-  COUNT(*) as accessible_records
-FROM attendance;
