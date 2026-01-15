@@ -43,13 +43,20 @@ serve(async (req) => {
     // Get current date and time
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()) // Start of today
-    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000) // Tomorrow
-    const threeDaysFromNow = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000) // Today + 3 days
+    
+    // Get user settings for reminder timing (default to 3 days if not set)
+    const defaultReminderDays = 3; // Default fallback
+    
+    // Calculate reminder dates based on user settings
+    const reminderDays = body.reminderDays || defaultReminderDays;
+    const reminderDate = new Date(today.getTime() + reminderDays * 24 * 60 * 60 * 1000);
+    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
     
     console.log('Date calculations:', {
       today: today.toISOString(),
       tomorrow: tomorrow.toISOString(),
-      threeDaysFromNow: threeDaysFromNow.toISOString()
+      reminderDate: reminderDate.toISOString(),
+      reminderDays: reminderDays
     })
 
     // Initialize counters
@@ -81,14 +88,14 @@ serve(async (req) => {
         let shouldSend = false
         let updateField = null
 
-        console.log(`Processing payment ${payment.id}: due_date=${payment.due_date}, dueDate=${dueDate.toDateString()}, today=${today.toDateString()}, tomorrow=${tomorrow.toDateString()}, threeDaysFromNow=${threeDaysFromNow.toDateString()}`)
+        console.log(`Processing payment ${payment.id}: due_date=${payment.due_date}, dueDate=${dueDate.toDateString()}, today=${today.toDateString()}, tomorrow=${tomorrow.toDateString()}, reminderDate=${reminderDate.toDateString()}`)
 
-        // Check 72 HOURS REMINDER
-        if (dueDate.toDateString() === threeDaysFromNow.toDateString() && (!automatic || !payment.last_72h_reminder_sent)) {
-          reminderType = '72_hours'
+        // Check CUSTOM REMINDER DAYS based on user settings
+        if (dueDate.toDateString() === reminderDate.toDateString() && (!automatic || !payment.last_reminder_sent)) {
+          reminderType = 'custom_reminder'
           shouldSend = true
-          updateField = 'last_72h_reminder_sent'
-          upcoming_72h++
+          updateField = 'last_reminder_sent'
+          upcoming_72h++ // Reuse counter for custom reminders
         }
         // Check 24 HOURS REMINDER
         else if (dueDate.toDateString() === tomorrow.toDateString() && (!automatic || !payment.last_24h_reminder_sent)) {
@@ -265,8 +272,8 @@ function getSubject(reminderType: string, clientName: string): string {
       return `Action Required: Overdue Payment Collection - ${name}`
     case '24_hours':
       return `Urgent: Payment Collection Due Tomorrow - ${name}`
-    case '72_hours':
-      return `Reminder: Payment Collection Due in 72 Hours - ${name}`
+    case 'custom_reminder':
+      return `Reminder: Payment Collection Due - ${name}`
     default:
       return `Payment Collection Reminder - ${name}`
   }
@@ -288,17 +295,17 @@ function generatePaymentReminderEmail(data: {
   const urgencyColors = {
     overdue: '#dc2626',
     '24_hours': '#f59e0b',
-    '72_hours': '#3b82f6'
+    custom_reminder: '#3b82f6'
   }
   
   const urgencyMessages = {
     overdue: 'Payment collection is now overdue. Please contact the client immediately to collect the payment.',
     '24_hours': 'Payment collection is due tomorrow. Please ensure you collect the payment on time.',
-    '72_hours': 'This is a friendly reminder that payment collection is due in 72 hours.'
+    custom_reminder: 'This is a reminder to collect payment according to your configured schedule.',
   }
   
   const color = urgencyColors[reminderType as keyof typeof urgencyColors] || '#3b82f6'
-  const message = urgencyMessages[reminderType as keyof typeof urgencyMessages] || urgencyMessages['72_hours']
+  const message = urgencyMessages[reminderType as keyof typeof urgencyMessages] || urgencyMessages['custom_reminder']
   
   return `
     <!DOCTYPE html>

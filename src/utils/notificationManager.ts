@@ -1,8 +1,10 @@
 // Notification manager for handling desktop notifications safely
 // Prevents app freezing and ensures notifications appear properly
+// Now respects user notification settings
 
 import { notifyDesktop, isDesktopNotificationSupported } from "@/utils/notifications";
 import { notificationPermissionManager } from "@/utils/notificationPermission";
+import { supabase } from "@/integrations/supabase/client";
 
 interface NotificationEvent {
   type: 'task-completed' | 'task-overdue' | 'new-assignment' | 'new-meeting';
@@ -30,6 +32,42 @@ class NotificationManager {
       NotificationManager.instance = new NotificationManager();
     }
     return NotificationManager.instance;
+  }
+
+  /**
+   * Check if notification type is enabled in user settings
+   */
+  private async checkNotificationSettings(assigneeId: string, notificationType: string): Promise<boolean> {
+    try {
+      // Get user's notification settings from localStorage
+      const settings = localStorage.getItem('ewpm_user_settings');
+      if (!settings) return true; // Default to enabled if no settings
+
+      const parsedSettings = JSON.parse(settings);
+      const notificationKey = this.getNotificationKey(notificationType);
+      
+      return parsedSettings.notifications?.[notificationKey] ?? true; // Default to enabled
+    } catch (error) {
+      console.error('Error checking notification settings:', error);
+      return true; // Default to enabled on error
+    }
+  }
+
+  /**
+   * Map notification types to settings keys
+   */
+  private getNotificationKey(notificationType: string): string {
+    const typeMap: Record<string, string> = {
+      'task-overdue': 'emergencyAlerts',
+      'new-assignment': 'assignmentReminders',
+      'emergency': 'emergencyAlerts',
+      'payment_reminder': 'paymentReminders',
+      'payment_due': 'paymentReminders',
+      'payment_overdue': 'paymentReminders',
+      'daily_summary': 'dailySummary',
+    };
+    
+    return typeMap[notificationType] || 'assignmentReminders';
   }
 
   /**
@@ -147,6 +185,13 @@ class NotificationManager {
    * Handle overdue task notification
    */
   private async handleTaskOverdue(data: NotificationEvent['data']) {
+    // Check if user has emergency alerts enabled
+    const isEnabled = await this.checkNotificationSettings(data.assignee_id || '', 'task-overdue');
+    if (!isEnabled) {
+      console.log('🔔 Emergency alerts disabled in settings, skipping notification');
+      return;
+    }
+
     const priority = data.priority === "emergency" ? "🚨 URGENT" : "⚠️ Overdue";
     await notifyDesktop({
       title: priority,
@@ -160,6 +205,13 @@ class NotificationManager {
    * Handle new assignment notification
    */
   private async handleNewAssignment(data: NotificationEvent['data']) {
+    // Check if user has assignment reminders enabled
+    const isEnabled = await this.checkNotificationSettings(data.assignee_id || '', 'new-assignment');
+    if (!isEnabled) {
+      console.log('🔔 Assignment reminders disabled in settings, skipping notification');
+      return;
+    }
+
     const priority = data.priority === "emergency" ? "🚨 URGENT" : "📋 New Task";
     await notifyDesktop({
       title: priority,
