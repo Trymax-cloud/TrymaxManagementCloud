@@ -4,7 +4,14 @@
 
 import { notifyDesktop, isDesktopNotificationSupported } from "@/utils/notifications";
 import { notificationPermissionManager } from "@/utils/notificationPermission";
-import { supabase } from "@/integrations/supabase/client";
+
+// Global settings cache - updated by SettingsContext
+let globalNotificationSettings: any = null;
+
+// Function to update global settings from SettingsContext
+export function updateNotificationSettings(settings: any) {
+  globalNotificationSettings = settings;
+}
 
 interface NotificationEvent {
   type: 'task-completed' | 'task-overdue' | 'new-assignment' | 'new-meeting';
@@ -39,7 +46,15 @@ class NotificationManager {
    */
   private async checkNotificationSettings(assigneeId: string, notificationType: string): Promise<boolean> {
     try {
-      // Get user's notification settings from localStorage
+      // Use global settings cache first
+      if (globalNotificationSettings) {
+        const notificationKey = this.getNotificationKey(notificationType);
+        const enabled = globalNotificationSettings.notifications?.[notificationKey];
+        console.log(`🔔 Settings check for ${notificationType} (${notificationKey}):`, enabled);
+        return enabled ?? true; // Default to enabled if not set
+      }
+
+      // Fallback to localStorage if global settings not available
       const settings = localStorage.getItem('ewpm_user_settings');
       if (!settings) return true; // Default to enabled if no settings
 

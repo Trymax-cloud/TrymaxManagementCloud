@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { JSONStorage, SafeStorage } from "@/utils/storage";
+import { updateNotificationSettings } from "@/utils/notificationManager";
 
 // ============= Types =============
 
@@ -145,6 +146,11 @@ const [archivedTaskIds, setArchivedTaskIds] = useState<Set<string>>(() => {
 // Persist settings to storage
 useEffect(() => {
   JSONStorage.setItem(STORAGE_KEY, settings);
+}, [settings]);
+
+// Update notification manager with current settings
+useEffect(() => {
+  updateNotificationSettings(settings);
 }, [settings]);
 
 // Persist archived tasks to storage

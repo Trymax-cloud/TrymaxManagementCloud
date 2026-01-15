@@ -18,8 +18,31 @@ serve(async (req) => {
     // Parse request body
     const body = await req.json()
     const automatic = body.automatic !== false // Default to true unless explicitly false
+    const paymentRemindersEnabled = body.paymentRemindersEnabled !== false // Default to true unless explicitly false
     
-    console.log('Reminder mode:', automatic ? 'automatic' : 'manual')
+    console.log('Payment reminders configuration:', {
+      automatic,
+      paymentRemindersEnabled,
+      reminderDays: body.reminderDays,
+      reminderTime: body.reminderTime
+    })
+
+    // Check if payment reminders are disabled
+    if (!paymentRemindersEnabled) {
+      console.log('🔔 Payment reminders disabled in settings, skipping all reminders');
+      return new Response(
+        JSON.stringify({
+          success: true,
+          sent: 0,
+          skipped: 0,
+          overdue: 0,
+          upcoming_72h: 0,
+          upcoming_24h: 0,
+          message: 'Payment reminders disabled in user settings'
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
     
     // Initialize Supabase client with service role key
     const supabaseUrl = Deno.env.get('SUPABASE_URL')

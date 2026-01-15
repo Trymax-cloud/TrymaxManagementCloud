@@ -20,7 +20,8 @@ export function useSendPaymentReminders() {
         body: { 
           automatic,
           reminderDays: settings.reminderTiming.remindBeforeDueDays,
-          reminderTime: settings.reminderTiming.defaultReminderTime
+          reminderTime: settings.reminderTiming.defaultReminderTime,
+          paymentRemindersEnabled: settings.notifications.paymentReminders
         }
       });
 
