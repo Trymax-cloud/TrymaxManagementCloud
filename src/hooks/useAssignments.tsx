@@ -1,8 +1,13 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
+import { useToast } from "./use-toast";
+import { desktopNotify } from "@/utils/desktopNotify";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
-import { useToast } from "./use-toast";
-import { type TaskCategory, DEFAULT_CATEGORY } from "@/lib/constants";
+import {
+  type TaskCategory,
+  DEFAULT_CATEGORY,
+} from "@/lib/constants";
 import {
   type AssignmentWithProfiles,
   type AssignmentFilters,
@@ -197,6 +202,35 @@ export function useCreateAssignment() {
 
       if (notifications.length > 0) {
         await supabase.from("notifications").insert(notifications);
+      }
+
+      // Create desktop notifications for assignees (excluding creator)
+      const assigneeNotifications = input.assignee_ids.filter(assignee_id => 
+        assignee_id !== user.id // Don't notify the creator
+      );
+
+      if (assigneeNotifications.length > 0) {
+        const notificationBody = `${input.title} has been assigned to you`;
+        
+        // Trigger desktop notification for each assignee
+        await Promise.all(
+          assigneeNotifications.map(async (assignee_id) => {
+            try {
+              await desktopNotify(
+                "New Assignment",
+                notificationBody,
+                "/assignments",
+                {
+                  tag: `assignment-${assignee_id}-${Date.now()}`, // Prevent duplicates
+                  urgency: input.priority === "emergency" ? "critical" : "normal",
+                  requireInteraction: input.priority === "emergency"
+                }
+              );
+            } catch (error) {
+              console.error("Failed to send desktop notification for assignment:", error);
+            }
+          })
+        );
       }
     },
     onSuccess: () => {
