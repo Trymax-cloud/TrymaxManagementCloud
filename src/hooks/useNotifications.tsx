@@ -23,17 +23,22 @@ export interface Notification {
 
 // Map notification types to settings keys
 const notificationTypeToSettingsKey: Record<string, string> = {
-  assignment_reminder: "assignmentReminders",
-  assignment_due: "assignmentReminders",
-  emergency: "emergencyAlerts",
-  emergency_task: "emergencyAlerts",
-  daily_summary: "dailySummary",
+  assignment_created: "assignmentReminders",
+  assignment: "assignmentReminders",
+  reminder: "assignmentReminders",
+  success: "general",
+  info: "general",
+  general: "general",
+  message_received: "messageNotifications",
+  rating_received: "ratingNotifications",
+  payment_created: "paymentNotifications",
   payment_reminder: "paymentReminders",
   payment_due: "paymentReminders",
   payment_overdue: "paymentReminders",
-  rating_received: "assignmentReminders",
-  meeting_created: "assignmentReminders",
-  meeting_reminder: "assignmentReminders",
+  meeting_created: "meetingNotifications",
+  meeting_updated: "meetingNotifications",
+  meeting_reminder: "meetingReminders",
+  daily_summary: "dailySummary",
 };
 
 export function useNotifications() {

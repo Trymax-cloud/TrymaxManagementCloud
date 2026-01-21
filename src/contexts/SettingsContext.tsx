@@ -9,6 +9,9 @@ export interface NotificationPreferences {
   emergencyAlerts: boolean;
   dailySummary: boolean;
   paymentReminders: boolean;
+  messageNotifications: boolean;
+  ratingNotifications: boolean;
+  meetingNotifications: boolean;
 }
 
 export interface ReminderTiming {
@@ -49,6 +52,9 @@ const defaultSettings: UserSettings = {
     emergencyAlerts: true,
     dailySummary: false,
     paymentReminders: true,
+    messageNotifications: true,
+    ratingNotifications: true,
+    meetingNotifications: true,
   },
   reminderTiming: {
     defaultReminderTime: '09:00',
