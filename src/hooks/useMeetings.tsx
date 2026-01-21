@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from '@/hooks/use-toast';
+import { desktopNotify } from '@/utils/desktopNotify';
 
 export interface Meeting {
   id: string;
@@ -149,6 +150,26 @@ export function useCreateMeeting() {
         }));
 
         await supabase.from("notifications").insert(notifications);
+
+        // Create desktop notifications for all participants
+        await Promise.all(
+          allRecipients.map(async (participantId) => {
+            try {
+              await desktopNotify(
+                "Meeting Scheduled",
+                `You have a meeting scheduled on ${input.meeting_date} at ${input.meeting_time}`,
+                "/meetings",
+                {
+                  tag: `meeting-${data.id}-${participantId}`,
+                  urgency: "normal",
+                  requireInteraction: false
+                }
+              );
+            } catch (error) {
+              console.error("Failed to send desktop notification for meeting:", error);
+            }
+          })
+        );
       }
 
       return data;
@@ -167,9 +188,20 @@ export function useCreateMeeting() {
 
 export function useUpdateMeeting() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Meeting> & { id: string }) => {
+      // First get the current meeting to check what changed
+      const { data: currentMeeting, error: fetchError } = await supabase
+        .from('meetings')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Update the meeting
       const { data, error } = await supabase
         .from('meetings')
         .update(updates)
@@ -178,6 +210,51 @@ export function useUpdateMeeting() {
         .single();
 
       if (error) throw error;
+
+      // Check if meeting date or time was updated
+      const dateChanged = updates.meeting_date && updates.meeting_date !== currentMeeting.meeting_date;
+      const timeChanged = updates.meeting_time && updates.meeting_time !== currentMeeting.meeting_time;
+
+      if (dateChanged || timeChanged) {
+        // Get all participants for this meeting
+        const { data: participants, error: participantsError } = await supabase
+          .from('meeting_participants')
+          .select('user_id')
+          .eq('meeting_id', id);
+
+        if (participantsError) throw participantsError;
+
+        // Filter out the updater (avoid self-notification)
+        const participantIds = participants
+          ?.map(p => p.user_id)
+          .filter(userId => userId !== user?.id) || [];
+
+        if (participantIds.length > 0) {
+          const newDate = updates.meeting_date || currentMeeting.meeting_date;
+          const newTime = updates.meeting_time || currentMeeting.meeting_time;
+
+          // Create desktop notifications for all participants
+          await Promise.all(
+            participantIds.map(async (participantId) => {
+              try {
+                await desktopNotify(
+                  "Meeting Updated",
+                  `Meeting time updated: ${currentMeeting.title} on ${newDate} at ${newTime}`,
+                  "/meetings",
+                  {
+                    tag: `meeting-update-${id}-${participantId}-${Date.now()}`,
+                    urgency: "normal",
+                    requireInteraction: false
+                  }
+                );
+              } catch (error) {
+                console.error("Failed to send desktop notification for meeting update:", error);
+              }
+            })
+          );
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
