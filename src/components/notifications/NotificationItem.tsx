@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from "date-fns";
-import { Bell, Check, Trash2, AlertTriangle, Info, CheckCircle } from "lucide-react";
+import { Bell, Check, Trash2, AlertTriangle, Info, CheckCircle, MessageSquare, Star, CreditCard, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { Notification } from "@/hooks/useNotifications";
@@ -12,11 +12,16 @@ interface NotificationItemProps {
 }
 
 const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  assignment_created: Bell,
   assignment: Bell,
   reminder: AlertTriangle,
   success: CheckCircle,
   info: Info,
   general: Bell,
+  message_received: MessageSquare,
+  rating_received: Star,
+  payment_created: CreditCard,
+  meeting_created: Calendar,
 };
 
 const priorityColors: Record<string, string> = {

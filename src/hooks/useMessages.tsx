@@ -141,6 +141,19 @@ export function useSendMessage() {
         .single();
 
       if (error) throw error;
+
+      // Create notification for message recipient
+      await supabase.from("notifications").insert({
+        user_id: receiverId,
+        type: "message_received",
+        title: "💬 New Message",
+        message: `You received a new message: ${content.substring(0, 50)}${content.length > 50 ? "..." : ""}`,
+        priority: "normal",
+        related_entity_type: "message",
+        related_entity_id: data.id,
+        action_url: `/messages?user=${user.id}`,
+      });
+
       return data;
     },
     onSuccess: (_, variables) => {

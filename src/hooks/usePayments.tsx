@@ -202,6 +202,21 @@ export function useCreatePayment() {
         .single();
 
       if (error) throw error;
+
+      // Create notification for assigned employee
+      if (input.responsible_user_id) {
+        await supabase.from("notifications").insert({
+          user_id: input.responsible_user_id,
+          type: "payment_created",
+          title: "💰 New Payment Record",
+          message: `A new payment of ${input.invoice_amount} has been recorded for client: ${input.client_name}`,
+          priority: "normal",
+          related_entity_type: "payment",
+          related_entity_id: data.id,
+          action_url: "/my-payments",
+        });
+      }
+
       return data;
     },
     onSuccess: () => {

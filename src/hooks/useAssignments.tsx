@@ -182,6 +182,22 @@ export function useCreateAssignment() {
 
       const { error } = await supabase.from("assignments").insert(rows);
       if (error) throw error;
+
+      // Create notifications for all assignees
+      const notifications = input.assignee_ids.map((assignee_id, index) => ({
+        user_id: assignee_id,
+        type: "assignment_created",
+        title: "📋 New Assignment",
+        message: `You have been assigned: ${input.title}${input.due_date ? ` (Due: ${input.due_date})` : ""}`,
+        priority: input.priority === "emergency" ? "high" : "normal",
+        related_entity_type: "assignment",
+        related_entity_id: null, // Will be set after getting the inserted IDs
+        action_url: "/assignments",
+      }));
+
+      if (notifications.length > 0) {
+        await supabase.from("notifications").insert(notifications);
+      }
     },
     onSuccess: () => {
       // Invalidate old hooks
