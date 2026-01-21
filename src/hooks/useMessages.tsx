@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from '@/hooks/use-toast';
+import { desktopNotify } from '@/utils/desktopNotify';
 
 export interface Message {
   id: string;
@@ -153,6 +154,23 @@ export function useSendMessage() {
         related_entity_id: data.id,
         action_url: `/messages?user=${user.id}`,
       });
+
+      // Create desktop notification for message recipient
+      try {
+        const senderName = (user as any)?.name || user.email?.split('@')[0] || 'Someone';
+        await desktopNotify(
+          "New Message",
+          `You received a message from ${senderName}`,
+          `/messages?user=${user.id}`,
+          {
+            tag: `message-${receiverId}-${Date.now()}`, // Prevent duplicates
+            urgency: "normal",
+            requireInteraction: false
+          }
+        );
+      } catch (error) {
+        console.error("Failed to send desktop notification for message:", error);
+      }
 
       return data;
     },
