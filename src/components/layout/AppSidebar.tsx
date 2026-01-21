@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
+import { useUnreadMessageCount } from "@/hooks/useMessages";
 import {
   Sidebar,
   SidebarContent,
@@ -31,6 +32,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 
 const employeeMenuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -61,6 +63,7 @@ const directorMenuItems = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const { user, userRole, signOut } = useAuth();
+  const { data: unreadMessageCount } = useUnreadMessageCount();
   const collapsed = state === "collapsed";
   
   const menuItems = userRole === 'director' ? directorMenuItems : employeeMenuItems;
@@ -103,7 +106,12 @@ export function AppSidebar() {
                       activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
                     >
                       <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
+                      <span className="flex-1">{item.title}</span>
+                      {item.title === "Messages" && unreadMessageCount && unreadMessageCount > 0 && (
+                        <Badge variant="destructive" className="h-5 min-w-[20px] px-1 text-xs flex items-center justify-center">
+                          {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                        </Badge>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
