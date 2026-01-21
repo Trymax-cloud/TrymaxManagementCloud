@@ -2,9 +2,23 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 // Expose protected methods to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
-  notify: (title, body) => {
-    ipcRenderer.invoke('show-notification', { title, body });
+  // Enhanced Notification System
+  showNotification: async (title, body, actionUrl, options = {}) => {
+    return await ipcRenderer.invoke('show-notification', { title, body, actionUrl, options });
   },
+  clearNotification: async (notificationId) => {
+    return await ipcRenderer.invoke('clear-notification', { notificationId });
+  },
+  clearAllNotifications: async () => {
+    return await ipcRenderer.invoke('clear-all-notifications');
+  },
+  
+  // Legacy compatibility
+  notify: (title, body) => {
+    return ipcRenderer.invoke('show-notification', { title, body });
+  },
+  
+  // Window controls
   minimize: () => {
     ipcRenderer.invoke('minimize-window');
   },
@@ -14,7 +28,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   close: () => {
     ipcRenderer.invoke('close-window');
   },
-  isElectron: true
+  
+  // App identification
+  isElectron: true,
+  
+  // Navigation handler for notification clicks
+  onNavigate: (callback) => {
+    ipcRenderer.on('navigate-to', (event, url) => {
+      callback(url);
+    });
+  }
 });
 
 // Handle window controls

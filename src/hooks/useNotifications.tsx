@@ -75,7 +75,11 @@ export function useNotifications() {
             });
 
             // Show desktop notification
-            desktopNotify(notification.title, notification.message);
+            desktopNotify(notification.title, notification.message, notification.action_url, {
+              tag: notification.id,
+              silent: false,
+              urgency: notification.priority === 'high' ? 'critical' : 'normal'
+            });
           } else {
             console.log("🔔 NOTIFICATION BLOCKED BY SETTINGS");
           }

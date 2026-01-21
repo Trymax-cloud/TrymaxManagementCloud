@@ -3,7 +3,7 @@ import { useOverduePayments } from './usePayments';
 import { useAuth } from './useAuth';
 import { useUserRole } from './useUserRole';
 import { toast } from '@/hooks/use-toast';
-import { showDesktopNotification } from '@/lib/desktopNotifications';
+import { desktopNotify } from '@/utils/desktopNotify';
 import { formatDistanceToNow } from 'date-fns';
 
 export function useOverduePaymentReminders() {
@@ -55,10 +55,10 @@ export function useOverduePaymentReminders() {
     });
 
     // Show desktop notification
-    showDesktopNotification(title, {
-      body: message,
+    desktopNotify(title, message, '/payments', {
       tag: 'overdue-payments-summary',
-      requireInteraction: true, // Keep notification until user interacts
+      requireInteraction: true,
+      urgency: 'critical'
     });
 
     // Show individual notifications for high-value overdue payments (> ₹50,000)
@@ -71,10 +71,15 @@ export function useOverduePaymentReminders() {
         const balance = payment.invoice_amount - payment.amount_paid;
         const overdueBy = formatDistanceToNow(new Date(payment.due_date), { addSuffix: false });
 
-        showDesktopNotification(`⚠️ ${payment.client_name}`, {
-          body: `₹${balance.toLocaleString('en-IN')} overdue by ${overdueBy}`,
-          tag: `overdue-payment-${payment.id}`,
-        });
+        desktopNotify(`⚠️ ${payment.client_name}`, 
+          `₹${balance.toLocaleString('en-IN')} overdue by ${overdueBy}`,
+          `/payments`,
+          {
+            tag: `overdue-payment-${payment.id}`,
+            requireInteraction: false,
+            urgency: 'critical'
+          }
+        );
       }, (index + 1) * 2000); // Stagger notifications by 2 seconds
     });
 

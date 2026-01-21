@@ -3,6 +3,12 @@ const path = require('path');
 
 // Keep a global reference of the window object
 let mainWindow;
+const activeNotifications = new Map(); // Track active notifications to prevent duplicates
+
+// Set AppUserModelID for Windows
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.trymaxfurnaces.trymaxmanagement');
+}
 
 function createWindow() {
   // Create the browser window
@@ -23,7 +29,7 @@ function createWindow() {
         '--disable-features=VizDisplayCompositor'
       ]
     },
-    icon: path.join(__dirname, '../public/favicon.ico'), // Use existing favicon
+    icon: path.join(__dirname, '../public/icon.ico'), // Use existing favicon
     show: false, // Don't show until ready-to-show
     titleBarStyle: 'default'
   });
@@ -113,12 +119,96 @@ app.on('window-all-closed', () => {
 });
 
 // IPC Handlers
-ipcMain.handle('show-notification', (event, { title, body }) => {
-  new Notification({
-    title: title,
-    body: body,
-    icon: path.join(__dirname, '../public/icon.png') // Optional: add icon
-  }).show();
+// Enhanced Desktop Notification System
+ipcMain.handle('show-notification', (event, { title, body, actionUrl, options = {} }) => {
+  try {
+    // Generate unique notification ID to prevent duplicates
+    const notificationId = options.tag || `${title}-${body}-${Date.now()}`;
+    
+    // Check if similar notification is already active
+    if (activeNotifications.has(notificationId)) {
+      console.log('🔔 Notification already active, skipping:', notificationId);
+      return { success: false, reason: 'duplicate' };
+    }
+
+    // Create notification with enhanced options
+    const notification = new Notification({
+      title: title,
+      body: body,
+      icon: path.join(__dirname, '../public/icon.png'),
+      tag: notificationId,
+      silent: options.silent || false,
+      urgency: options.urgency || 'normal',
+      requireInteraction: options.requireInteraction || false,
+      ...options
+    });
+
+    // Handle notification click
+    notification.on('click', () => {
+      console.log('🔔 Notification clicked:', title);
+      
+      // Focus and show the main window
+      if (mainWindow) {
+        if (mainWindow.isMinimized()) {
+          mainWindow.restore();
+        }
+        mainWindow.focus();
+        mainWindow.show();
+        
+        // Navigate to action URL if provided
+        if (actionUrl) {
+          console.log('🔔 Navigating to:', actionUrl);
+          mainWindow.webContents.send('navigate-to', actionUrl);
+        }
+      }
+      
+      // Close the notification
+      notification.close();
+      activeNotifications.delete(notificationId);
+    });
+
+    // Handle notification close
+    notification.on('close', () => {
+      activeNotifications.delete(notificationId);
+    });
+
+    // Handle notification error
+    notification.on('error', (error) => {
+      console.error('🔔 Notification error:', error);
+      activeNotifications.delete(notificationId);
+    });
+
+    // Show notification and track it
+    notification.show();
+    activeNotifications.set(notificationId, notification);
+    
+    console.log('🔔 Notification shown:', title);
+    return { success: true, id: notificationId };
+    
+  } catch (error) {
+    console.error('🔔 Failed to show notification:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Clear specific notification
+ipcMain.handle('clear-notification', (event, { notificationId }) => {
+  if (activeNotifications.has(notificationId)) {
+    const notification = activeNotifications.get(notificationId);
+    notification.close();
+    activeNotifications.delete(notificationId);
+    return { success: true };
+  }
+  return { success: false, reason: 'not_found' };
+});
+
+// Clear all notifications
+ipcMain.handle('clear-all-notifications', () => {
+  activeNotifications.forEach((notification) => {
+    notification.close();
+  });
+  activeNotifications.clear();
+  return { success: true, cleared: activeNotifications.size };
 });
 
 ipcMain.handle('minimize-window', () => {

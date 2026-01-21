@@ -11,7 +11,6 @@ import { RealtimeProvider } from "@/components/providers/RealtimeProvider";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { useElectronValidation } from "@/utils/validation";
-import { requestNotificationPermission } from "@/lib/desktopNotifications";
 import { useAuth } from "@/hooks/useAuth";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { AppLoader } from "@/components/ui/AppLoader";
@@ -119,14 +118,25 @@ function App() {
   }));
 
   useEffect(() => {
-    // Request notification permission after a short delay
-    const timer = setTimeout(() => {
-      if (!isElectron) {
-        requestNotificationPermission();
-      }
-    }, 3000); // 3 seconds after app load
+    // No notification permission needed for Electron (handled by main process)
+    // Only web browsers need permission requests
+    return () => {};
+  }, []);
 
-    return () => clearTimeout(timer);
+  // Handle Electron navigation from notification clicks
+  useEffect(() => {
+    if (isElectron && (window as any).electronAPI?.onNavigate) {
+      const handleNavigate = (url: string) => {
+        console.log('🔔 Navigating to:', url);
+        window.location.hash = url;
+      };
+      
+      (window as any).electronAPI.onNavigate(handleNavigate);
+      
+      return () => {
+        // Cleanup if needed
+      };
+    }
   }, [isElectron]);
 
   return (
