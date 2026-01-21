@@ -22,6 +22,7 @@ const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   rating_received: Star,
   payment_created: CreditCard,
   meeting_created: Calendar,
+  meeting_updated: Calendar,
 };
 
 const priorityColors: Record<string, string> = {

@@ -141,12 +141,14 @@ export function useCreateMeeting() {
         const notifications = allRecipients.map(userId => ({
           user_id: userId,
           type: "meeting_created",
-          title: "📅 New Meeting Scheduled",
-          message: `You've been invited to "${input.title}" on ${input.meeting_date} at ${input.meeting_time}`,
+          title: "Meeting Scheduled",
+          message: `You have a meeting scheduled on ${input.meeting_date} at ${input.meeting_time}`,
           priority: "normal",
           related_entity_type: "meeting",
           related_entity_id: data.id,
           action_url: "/meetings",
+          is_read: false,
+          created_at: new Date().toISOString()
         }));
 
         await supabase.from("notifications").insert(notifications);
@@ -232,6 +234,22 @@ export function useUpdateMeeting() {
         if (participantIds.length > 0) {
           const newDate = updates.meeting_date || currentMeeting.meeting_date;
           const newTime = updates.meeting_time || currentMeeting.meeting_time;
+
+          // Create database notifications for all participants
+          const updateNotifications = participantIds.map(participantId => ({
+            user_id: participantId,
+            type: "meeting_updated",
+            title: "Meeting Updated",
+            message: `Meeting time updated to ${newDate} at ${newTime}`,
+            priority: "normal",
+            related_entity_type: "meeting",
+            related_entity_id: id,
+            action_url: "/meetings",
+            is_read: false,
+            created_at: new Date().toISOString()
+          }));
+
+          await supabase.from("notifications").insert(updateNotifications);
 
           // Create desktop notifications for all participants
           await Promise.all(
