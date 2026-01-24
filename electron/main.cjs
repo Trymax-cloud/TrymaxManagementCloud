@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, Notification, Menu, globalShortcut } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 
 // Keep a global reference of the window object
@@ -52,13 +53,20 @@ function createWindow() {
 
   // Add keyboard shortcuts
   mainWindow.webContents.on('before-input-event', (event, input) => {
-    // Production: Block all shortcuts except allowed ones
+    // Production: Block only shortcuts, allow normal typing
     if (app.isPackaged) {
+      const isShortcut = 
+        input.control || input.meta || input.alt || // Modifier keys
+        input.key === 'F11' || // F11 - Toggle Maximize
+        input.key === 'F12'; // F12 - DevTools
+      
+      // Allow these shortcuts in production
       const isAllowed = 
         (input.key === 'F11') || // F11 - Toggle Maximize
         ((input.control || input.meta) && input.key === 'r'); // Ctrl+R or Ctrl+Shift+R
       
-      if (!isAllowed) {
+      // Block shortcuts but allow normal typing
+      if (isShortcut && !isAllowed) {
         event.preventDefault();
         return;
       }
@@ -115,6 +123,48 @@ function createWindow() {
   // Show window when ready
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+    
+    // Enable auto-updates only in production
+    if (app.isPackaged) {
+      // Configure auto-updater with proper GitHub feed URL
+      autoUpdater.setFeedURL({
+        provider: 'github',
+        owner: 'Trymax-cloud',
+        repo: 'TrymaxManagementCloud',
+        private: false
+      });
+      
+      // Add event listeners for debugging
+      autoUpdater.on('checking-for-update', () => {
+        console.error('Checking for update...');
+      });
+      
+      autoUpdater.on('update-available', (info) => {
+        console.error('Update available:', info);
+      });
+      
+      autoUpdater.on('update-not-available', (info) => {
+        console.error('Update not available:', info);
+      });
+      
+      autoUpdater.on('update-downloaded', (info) => {
+        console.error('Update downloaded:', info);
+        // Show notification before restart
+        setTimeout(() => {
+          autoUpdater.quitAndInstall();
+        }, 3000); // Wait 3 seconds before restart
+      });
+      
+      // Handle errors properly
+      autoUpdater.on('error', (err) => {
+        console.error('Auto update error:', err);
+      });
+      
+      // Check for updates after a short delay to ensure app is fully loaded
+      setTimeout(() => {
+        autoUpdater.checkForUpdatesAndNotify();
+      }, 5000); // Wait 5 seconds before checking
+    }
     
     // Completely remove menu bar
     Menu.setApplicationMenu(null);
@@ -271,8 +321,15 @@ ipcMain.handle('clear-all-notifications', () => {
     notification.close();
   });
   activeNotifications.clear();
-  return { success: true, cleared: activeNotifications.size };
+  return { success: true };
 });
+
+// Auto-update error handling (production only)
+if (app.isPackaged) {
+  autoUpdater.on("error", (err) => {
+    console.error("Auto update error:", err);
+  });
+}
 
 ipcMain.handle('minimize-window', () => {
   if (mainWindow) {

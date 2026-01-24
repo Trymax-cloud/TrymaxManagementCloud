@@ -25,15 +25,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [lastActivity, setLastActivity] = useState(Date.now());
+  const [rememberMe, setRememberMe] = useState(false);
 
   // Update last activity on user interaction
   const updateActivity = useCallback(() => {
     setLastActivity(Date.now());
   }, []);
 
-  // Session timeout checker
+  // Session timeout checker (only when NOT using Remember Me)
   useEffect(() => {
-    if (!user) return;
+    if (!user || rememberMe) return; // Skip timeout if Remember Me is enabled
 
     const checkTimeout = setInterval(() => {
       if (Date.now() - lastActivity > SESSION_TIMEOUT) {
@@ -53,9 +54,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         window.removeEventListener(event, updateActivity);
       });
     };
-  }, [user, lastActivity, updateActivity]);
+  }, [user, lastActivity, updateActivity, rememberMe]);
 
   useEffect(() => {
+    // Restore Remember Me preference from localStorage
+    const savedRememberMe = localStorage.getItem('supabase.remember.me') === 'true';
+    setRememberMe(savedRememberMe);
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -98,6 +103,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (!error) {
       setLastActivity(Date.now());
+      setRememberMe(rememberMe); // Store Remember Me preference
+      
+      // Store Remember Me preference in localStorage for persistence
+      localStorage.setItem('supabase.remember.me', rememberMe.toString());
     }
     return { error };
   };
