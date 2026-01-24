@@ -37,6 +37,18 @@ export function CreateMeetingModal({ open, onOpenChange }: CreateMeetingModalPro
 
   const availableParticipants = users?.filter(p => p.id !== user?.id) || [];
 
+  const toggleSelectAll = () => {
+    if (selectedParticipants.length === availableParticipants.length) {
+      // Clear all selections
+      setSelectedParticipants([]);
+    } else {
+      // Select all participants
+      setSelectedParticipants(availableParticipants.map(p => p.id));
+    }
+  };
+
+  const isAllSelected = selectedParticipants.length === availableParticipants.length && availableParticipants.length > 0;
+
   const toggleParticipant = (userId: string) => {
     setSelectedParticipants(prev => 
       prev.includes(userId) 
@@ -157,7 +169,21 @@ export function CreateMeetingModal({ open, onOpenChange }: CreateMeetingModalPro
           </div>
 
           <div className="space-y-2">
-            <Label>Participants</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="participants">Participants</Label>
+              {availableParticipants.length > 0 && (
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground hover:text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    onChange={toggleSelectAll}
+                    className="rounded border-gray-300 text-primary focus:ring-primary"
+                    disabled={createMeeting.isPending}
+                  />
+                  <span>Select All ({selectedParticipants.length}/{availableParticipants.length})</span>
+                </label>
+              )}
+            </div>
             {selectedParticipants.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-2">
                 {selectedParticipants.map(id => {
@@ -206,9 +232,9 @@ export function CreateMeetingModal({ open, onOpenChange }: CreateMeetingModalPro
                         getInitials(profile.name)
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{profile.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{profile.email}</p>
+                    <div className="flex-1 text-left">
+                      <div className="font-medium">{profile?.name || 'Unknown'}</div>
+                      <div className="text-sm text-muted-foreground">{profile?.email}</div>
                     </div>
                   </button>
                 ))}

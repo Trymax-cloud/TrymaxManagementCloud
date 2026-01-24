@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format, isPast, isToday } from "date-fns";
-import { Calendar, User, IndianRupee, AlertCircle, Check, Trash2 } from "lucide-react";
+import { Calendar, User, IndianRupee, AlertCircle, Check, Trash2, Bell } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,20 +16,22 @@ interface PaymentCardProps {
   payment: ClientPayment;
   responsibleName?: string;
   projectName?: string;
+  responsibleUserId?: string;
   canEdit?: boolean;
   isSelected?: boolean;
   onSelect?: (paymentId: string, checked: boolean) => void;
-  onDelete?: (payment: { id: string; client_name: string; invoice_amount: number }) => void;
+  onDelete?: (paymentId: string) => void;
 }
 
 export function PaymentCard({ 
   payment, 
   responsibleName, 
   projectName, 
+  responsibleUserId,
   canEdit = false, 
   isSelected = false, 
   onSelect, 
-  onDelete 
+  onDelete
 }: PaymentCardProps) {
   const updatePayment = useUpdatePayment();
   const [showPartialInput, setShowPartialInput] = useState(false);
@@ -126,16 +128,19 @@ export function PaymentCard({
             <Badge className={getStatusColor()}>
               {payment.status.replace("_", " ")}
             </Badge>
-            {onDelete && canEdit && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onDelete(payment)}
-                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
+            <div className="flex gap-1">
+              {onDelete && canEdit && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onDelete(payment.id)}
+                  className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
+                  title="Delete Payment"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </CardHeader>

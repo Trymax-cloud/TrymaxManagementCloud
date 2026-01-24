@@ -19,6 +19,7 @@ import type { UserRole } from "@/types";
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  rememberMe: z.boolean().default(false),
 });
 
 const signUpSchema = z.object({
@@ -46,7 +47,7 @@ export default function Auth() {
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: "", password: "", rememberMe: false },
   });
 
   const signUpForm = useForm<SignUpFormData>({
@@ -70,16 +71,14 @@ export default function Auth() {
 
   const handleLogin = async (data: LoginFormData) => {
     setIsSubmitting(true);
-    const { error } = await signIn(data.email, data.password);
+    const { error } = await signIn(data.email, data.password, data.rememberMe);
     setIsSubmitting(false);
 
     if (error) {
       toast({
-        variant: "destructive",
         title: "Login failed",
-        description: error.message === "Invalid login credentials" 
-          ? "Invalid email or password. Please try again."
-          : error.message,
+        description: error.message,
+        variant: "destructive",
       });
     }
   };
@@ -252,6 +251,18 @@ export default function Auth() {
                   )}
                 </div>
 
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="remember-me"
+                    {...loginForm.register("rememberMe")}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <Label htmlFor="remember-me" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Remember me
+                  </Label>
+                </div>
+
                 <div className="flex justify-end">
                   <Button 
                     type="button" 
@@ -353,7 +364,7 @@ export default function Auth() {
                   <Label>Role</Label>
                   <RadioGroup
                     defaultValue="employee"
-                    onValueChange={(value) => signUpForm.setValue("role", value as UserRole)}
+                    onValueChange={(value) => signUpForm.setValue("role", value as "employee" | "director")}
                     className="grid grid-cols-2 gap-4"
                   >
                     <div>

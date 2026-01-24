@@ -85,8 +85,6 @@ export function useNotifications() {
               silent: false,
               urgency: notification.priority === 'high' ? 'critical' : 'normal'
             });
-          } else {
-            console.log("🔔 NOTIFICATION BLOCKED BY SETTINGS");
           }
         }
       )

@@ -179,7 +179,7 @@ export const signupSchema = z.object({
     .string()
     .min(6, "Password must be at least 6 characters")
     .max(72, "Password must be less than 72 characters"),
-  role: z.enum(["employee", "director"], {
+  role: z.enum(["employee", "manager", "director"], {
     errorMap: () => ({ message: "Invalid role" }),
   }),
 });

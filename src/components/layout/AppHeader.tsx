@@ -193,7 +193,7 @@ export function AppHeader({ title = "Dashboard" }: AppHeaderProps) {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => window.location.href = '/settings'} className="w-full cursor-pointer">
+            <DropdownMenuItem onClick={() => navigate('/settings')} className="w-full cursor-pointer">
               Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,19 +7,30 @@ import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useProjects, Project, PROJECT_STAGES, ProjectStage } from "@/hooks/useProjects";
+import { useProjects, Project, useUpdateProject, useDeleteProject } from "@/hooks/useProjects";
+import { PROJECT_STAGES, type ProjectStage } from "@/constants/projectStages";
 import { useAssignments } from "@/hooks/useAssignments";
 import { useAssignmentsWithProfiles } from "@/hooks/useAssignmentsWithProfiles";
 import { useUserRole } from "@/hooks/useUserRole";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
+import { DeleteProjectDialog } from "@/components/projects/DeleteProjectDialog";
 import { ProjectDetailModal } from "@/components/projects/ProjectDetailModal";
-import { Plus, FolderKanban, Calendar, Search, Filter, ChevronDown, ChevronRight, Package, ClipboardCheck, Truck, CheckCircle } from "lucide-react";
+import { Plus, FolderKanban, Calendar, Search, Filter, ChevronDown, ChevronRight, Package, ClipboardCheck, Truck, CheckCircle, Edit, Trash2, MoreHorizontal } from "lucide-react";
 import { format } from "date-fns";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const STAGE_ICONS: Record<ProjectStage, React.ReactNode> = {
   order_received: <Package className="h-5 w-5" />,
+  shipment_plan: <Calendar className="h-5 w-5" />,
+  order_to_supplier: <Plus className="h-5 w-5" />,
   inspection: <ClipboardCheck className="h-5 w-5" />,
   dispatch: <Truck className="h-5 w-5" />,
   delivery: <CheckCircle className="h-5 w-5" />,
@@ -26,9 +38,11 @@ const STAGE_ICONS: Record<ProjectStage, React.ReactNode> = {
 
 export default function Projects() {
   const { isDirector } = useUserRole();
+  const navigate = useNavigate();
   const { data: projects, isLoading } = useProjects();
   const { data: assignments } = useAssignmentsWithProfiles();
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -61,6 +75,15 @@ export default function Projects() {
     setDetailModalOpen(true);
   };
 
+  const handleEditProject = (project: Project) => {
+    navigate(`/projects/${project.id}/edit`);
+  };
+
+  const handleDeleteProject = (project: Project) => {
+    setSelectedProject(project);
+    setDeleteDialogOpen(true);
+  };
+
   const toggleStage = (stage: string) => {
     setExpandedStages(prev => ({ ...prev, [stage]: !prev[stage] }));
   };
@@ -74,17 +97,57 @@ export default function Projects() {
     return (
       <Card 
         key={project.id} 
-        className="border-0 shadow-soft hover:shadow-medium transition-shadow cursor-pointer"
-        onClick={() => handleProjectClick(project)}
+        className="border-0 shadow-soft hover:shadow-medium transition-shadow relative group"
       >
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2">
-            <CardTitle className="text-lg line-clamp-1">{project.name}</CardTitle>
-            <StatusBadge status={project.status} />
+            <div className="flex-1">
+              <CardTitle className="text-lg line-clamp-1">{project.name}</CardTitle>
+              <CardDescription>{project.client_name}</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <StatusBadge status={project.status} />
+              {isDirector && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditProject(project);
+                    }}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteProject(project);
+                      }}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
           </div>
-          <CardDescription>{project.client_name}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent 
+          className="space-y-3 cursor-pointer"
+          onClick={() => handleProjectClick(project)}
+        >
           {project.description && (
             <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
           )}
@@ -249,6 +312,12 @@ export default function Projects() {
       <CreateProjectModal 
         open={createModalOpen} 
         onOpenChange={setCreateModalOpen} 
+      />
+      
+      <DeleteProjectDialog 
+        open={deleteDialogOpen} 
+        onOpenChange={setDeleteDialogOpen} 
+        project={selectedProject}
       />
       
       <ProjectDetailModal

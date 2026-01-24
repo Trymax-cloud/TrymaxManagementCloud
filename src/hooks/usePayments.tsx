@@ -345,28 +345,69 @@ export function useDeletePayment() {
         .eq("id", id);
 
       if (error) throw error;
+      return id;
     },
-    onSuccess: () => {
-      // Targeted invalidation instead of global
-      queryClient.invalidateQueries({ queryKey: ["payments"] });
-      queryClient.invalidateQueries({ queryKey: ["my-payments"] });
-      queryClient.invalidateQueries({ queryKey: ["overdue-payments"] });
-      // Also invalidate analytics queries
-      queryClient.invalidateQueries({ queryKey: ["payment-analytics"] });
-      queryClient.invalidateQueries({ queryKey: ["payment-trends"] });
-      queryClient.invalidateQueries({ queryKey: ["client-payment-summaries"] });
-      queryClient.invalidateQueries({ queryKey: ["upcoming-payment-reminders"] });
-      toast({
-        title: "Payment deleted",
-        description: "The payment has been removed.",
+    onMutate: async (deletedId: string) => {
+      await queryClient.cancelQueries({
+        predicate: q => {
+          const queryKey = q.queryKey;
+          return Array.isArray(queryKey) && (
+            queryKey[0] === "payments" ||
+            queryKey[0] === "my-payments" ||
+            queryKey[0] === "overdue-payments"
+          );
+        }
+      });
+
+      const previousPayments = queryClient.getQueriesData({
+        predicate: q => {
+          const queryKey = q.queryKey;
+          return Array.isArray(queryKey) && (
+            queryKey[0] === "payments" ||
+            queryKey[0] === "my-payments" ||
+            queryKey[0] === "overdue-payments"
+          );
+        }
+      });
+
+      // Optimistically remove payment from ALL payment queries
+      previousPayments.forEach(([key, data]) => {
+        if (Array.isArray(data)) {
+          queryClient.setQueryData(
+            key,
+            data.filter(p => p.id !== deletedId)
+          );
+        }
+      });
+
+      return { previousPayments };
+    },
+
+    onError: (_err, _id, context) => {
+      // Rollback cache
+      context?.previousPayments?.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
       });
     },
-    onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message,
-      });
+
+    onSuccess: (_, deletedPaymentId) => {
+      // Update all payment-related queries immediately
+      queryClient.setQueriesData(
+        {
+          predicate: (query) => {
+            const queryKey = query.queryKey;
+            return Array.isArray(queryKey) && (
+              queryKey[0] === "payments" ||
+              queryKey[0] === "my-payments" ||
+              queryKey[0] === "overdue-payments"
+            );
+          }
+        },
+        (oldData: any) => {
+          if (!Array.isArray(oldData)) return oldData;
+          return oldData.filter(p => p.id !== deletedPaymentId);
+        }
+      );
     },
   });
 }

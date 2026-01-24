@@ -14,10 +14,12 @@ function createWindow() {
   // Create the browser window
   mainWindow = new BrowserWindow({
     title: "TrymaxManagement",
-    width: 1200,
-    height: 800,
+    width: 1920,
+    height: 1080,
     minWidth: 800,
     minHeight: 600,
+    show: false, // Don't show until ready-to-show
+    autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -30,28 +32,88 @@ function createWindow() {
       ]
     },
     icon: path.join(__dirname, '../public/icon.ico'), // Use existing favicon
-    show: false, // Don't show until ready-to-show
     titleBarStyle: 'default'
   });
 
+  // Maximize window after creation
+  mainWindow.maximize();
+
+  // Enable developer tools only in development
+  if (!app.isPackaged) {
+    mainWindow.webContents.openDevTools();
+  }
+
+  // Disable DevTools explicitly in production (defense-in-depth)
+  if (app.isPackaged) {
+    mainWindow.webContents.on("devtools-opened", () => {
+      mainWindow.webContents.closeDevTools();
+    });
+  }
+
+  // Add keyboard shortcuts
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    // Production: Block all shortcuts except allowed ones
+    if (app.isPackaged) {
+      const isAllowed = 
+        (input.key === 'F11') || // F11 - Toggle Maximize
+        ((input.control || input.meta) && input.key === 'r'); // Ctrl+R or Ctrl+Shift+R
+      
+      if (!isAllowed) {
+        event.preventDefault();
+        return;
+      }
+    }
+
+    // F12 - Toggle DevTools (development only)
+    if (input.key === 'F12' && !app.isPackaged) {
+      mainWindow.webContents.toggleDevTools();
+      return;
+    }
+    
+    // F11 - Toggle Maximize/Unmaximize
+    if (input.key === 'F11') {
+      event.preventDefault(); // Prevent default behavior
+      if (mainWindow.isMaximized()) {
+        mainWindow.unmaximize();
+      } else {
+        mainWindow.maximize();
+      }
+      return;
+    }
+    
+    // Ctrl+R or Ctrl+Shift+R - Reload
+    if ((input.control || input.meta) && input.key === 'r') {
+      event.preventDefault(); // Prevent default browser behavior
+      if (input.shift) {
+        mainWindow.webContents.reloadIgnoringCache();
+      } else {
+        mainWindow.reload();
+      }
+      return;
+    }
+  });
+
   // Load the app
-  const isDev = process.env.NODE_ENV === 'development';
+  const isDev = false; // Force production mode
   let startUrl;
   
   if (isDev) {
-    startUrl = 'http://localhost:5173';
+    startUrl = 'http://localhost:8080';
   } else {
     // For production, load directly from file path
     startUrl = path.join(__dirname, '../dist/index.html');
   }
   
-  console.log('Starting Electron app with file:', startUrl);
+  console.error('Starting Electron app with file:', startUrl);
   
-  mainWindow.loadFile(startUrl);
+  if (isDev) {
+    mainWindow.loadURL(startUrl);
+  } else {
+    mainWindow.loadFile(startUrl);
+  }
 
   // Show window when ready
   mainWindow.once('ready-to-show', () => {
-    console.log('Electron window ready to show');
     mainWindow.show();
     
     // Completely remove menu bar
@@ -60,10 +122,14 @@ function createWindow() {
     // Register global shortcuts for functionality
     const isDev = process.env.NODE_ENV === 'development';
     
-    // F11 - Toggle Full Screen
+    // F11 - Toggle Maximize/Unmaximize
     globalShortcut.register('F11', () => {
       if (mainWindow) {
-        mainWindow.setFullScreen(!mainWindow.isFullScreen());
+        if (mainWindow.isMaximized()) {
+          mainWindow.unmaximize();
+        } else {
+          mainWindow.maximize();
+        }
       }
     });
     
@@ -82,7 +148,7 @@ function createWindow() {
     });
     
     // F12 - DevTools (development only)
-    if (isDev) {
+    if (!app.isPackaged) {
       globalShortcut.register('F12', () => {
         if (mainWindow) {
           mainWindow.webContents.toggleDevTools();
@@ -93,7 +159,6 @@ function createWindow() {
 
   // Handle window closed
   mainWindow.on('closed', () => {
-    console.log('Electron window closed');
     mainWindow = null;
   });
 
@@ -104,7 +169,10 @@ function createWindow() {
 
   // Handle console messages from renderer
   mainWindow.webContents.on('console-message', (event, level, message) => {
-    console.log(`Renderer [${level}]:`, message);
+    // Only log errors in production
+    if (level >= 2) { // 2 = warning, 3 = error
+      console.error(`Renderer [${level}]:`, message);
+    }
   });
 }
 
@@ -127,7 +195,6 @@ ipcMain.handle('show-notification', (event, { title, body, actionUrl, options = 
     
     // Check if similar notification is already active
     if (activeNotifications.has(notificationId)) {
-      console.log('🔔 Notification already active, skipping:', notificationId);
       return { success: false, reason: 'duplicate' };
     }
 
@@ -145,8 +212,6 @@ ipcMain.handle('show-notification', (event, { title, body, actionUrl, options = 
 
     // Handle notification click
     notification.on('click', () => {
-      console.log('🔔 Notification clicked:', title);
-      
       // Focus and show the main window
       if (mainWindow) {
         if (mainWindow.isMinimized()) {
@@ -157,7 +222,6 @@ ipcMain.handle('show-notification', (event, { title, body, actionUrl, options = 
         
         // Navigate to action URL if provided
         if (actionUrl) {
-          console.log('🔔 Navigating to:', actionUrl);
           mainWindow.webContents.send('navigate-to', actionUrl);
         }
       }
@@ -182,7 +246,6 @@ ipcMain.handle('show-notification', (event, { title, body, actionUrl, options = 
     notification.show();
     activeNotifications.set(notificationId, notification);
     
-    console.log('🔔 Notification shown:', title);
     return { success: true, id: notificationId };
     
   } catch (error) {

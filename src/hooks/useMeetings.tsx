@@ -151,7 +151,12 @@ export function useCreateMeeting() {
           created_at: new Date().toISOString()
         }));
 
-        await supabase.from("notifications").insert(notifications);
+        const insertResult = await supabase.from("notifications").insert(notifications);
+        
+        if (insertResult.error) {
+          console.error("📅 ERROR INSERTING MEETING NOTIFICATIONS:", insertResult.error);
+          // Continue with desktop notifications even if database notifications fail
+        }
 
         // Create desktop notifications for all participants
         await Promise.all(

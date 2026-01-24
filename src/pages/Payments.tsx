@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { format, isPast } from "date-fns";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +14,7 @@ import { useProfiles } from "@/hooks/useProfiles";
 import { useProjects } from "@/hooks/useProjects";
 import { useUserRole } from "@/hooks/useUserRole";
 import { usePaymentReminders, useDeletePayment } from "@/hooks/usePaymentReminders";
-import { useSendPaymentReminders } from "@/hooks/useSendPaymentReminders";
+import { useSendManualPaymentReminder } from "@/hooks/useSendManualPaymentReminder";
 import { PaymentCard } from "@/components/payments/PaymentCard";
 import { CreatePaymentModal } from "@/components/payments/CreatePaymentModal";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,7 +32,7 @@ export default function Payments() {
   const { data: projects } = useProjects();
   const { sendReminders, isLoading: sendingReminders } = usePaymentReminders();
   const { deletePayment, isLoading: deletingPayment } = useDeletePayment();
-  const sendPaymentReminders = useSendPaymentReminders();
+  const sendManualPaymentReminder = useSendManualPaymentReminder();
   
   // Enable real-time updates
   usePaymentRealtime();
@@ -49,17 +49,24 @@ export default function Payments() {
     return profiles?.find(p => p.id === userId)?.name || "Unknown";
   };
 
+  const handleSendReminder = (payment: any) => {
+    // The PaymentCard component will handle the reminder logic
+    // This is just a wrapper to satisfy the prop requirement
+  };
+
   const getProjectName = (projectId: string | null) => {
     if (!projectId) return undefined;
     return projects?.find(p => p.id === projectId)?.name;
   };
 
-  const filteredPayments = payments?.filter(payment => {
-    const matchesSearch = 
-      payment.client_name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || payment.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredPayments = useMemo(() => {
+    return payments?.filter(payment => {
+      const matchesSearch = 
+        payment.client_name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === "all" || payment.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [payments, searchQuery, statusFilter]);
 
   const totalPending = payments?.filter(p => p.status === "pending").length || 0;
   const totalOverdue = overduePayments?.length || 0;
@@ -79,11 +86,31 @@ export default function Payments() {
       toast.error("Please select payments to send reminders for");
       return;
     }
-
+    
     try {
-      const result = await sendPaymentReminders.mutateAsync(false); // Manual reminder
-      console.log('Payment reminders result:', result);
-      toast.success(`Payment reminders processed: ${result.sent} sent, ${result.skipped} skipped`);
+      let sentCount = 0;
+      let skippedCount = 0;
+
+      for (const paymentId of selectedPayments) {
+        const payment = payments?.find(p => p.id === paymentId);
+        if (payment) {
+          try {
+            await sendManualPaymentReminder.mutateAsync({
+              paymentId: payment.id,
+              clientName: payment.client_name,
+              invoiceAmount: payment.invoice_amount,
+              dueDate: payment.due_date,
+              responsibleUserId: payment.responsible_user_id,
+            });
+            sentCount++;
+          } catch (error) {
+            console.error(`Failed to send reminder for payment ${paymentId}:`, error);
+            skippedCount++;
+          }
+        }
+      }
+
+      toast.success(`Payment reminders processed: ${sentCount} sent, ${skippedCount} skipped`);
       setSelectedPayments([]);
     } catch (error) {
       console.error("Failed to send reminders:", error);
@@ -107,23 +134,19 @@ export default function Payments() {
     }
   };
 
-  const handleDeletePayment = async (payment: { id: string; client_name: string; invoice_amount: number }) => {
+  const handleDeletePayment = async (paymentId: string) => {
     try {
-      await deletePayment(payment.id);
+      await deletePayment(paymentId);
       // Clear selection if deleted payment was selected
-      setSelectedPayments(prev => prev.filter(id => id !== payment.id));
+      setSelectedPayments(prev => prev.filter(id => id !== paymentId));
     } catch (error) {
       console.error("Delete failed:", error);
-      // Add more detailed error logging
-      if (error instanceof Error) {
-        console.error("Error details:", {
-          message: error.message,
-          stack: error.stack,
-          paymentId: payment.id,
-          paymentName: payment.client_name
-        });
-      }
     }
+  };
+
+  const getResponsibleName = (userId: string | null) => {
+    if (!userId) return undefined;
+    return profiles?.find(p => p.id === userId)?.name;
   };
 
   return (
@@ -148,12 +171,12 @@ export default function Payments() {
               </Button>
               <Button 
                 onClick={handleSendReminders}
-                disabled={selectedPayments.length === 0 || sendPaymentReminders.isPending}
+                disabled={selectedPayments.length === 0 || sendManualPaymentReminder.isPending}
                 className="flex items-center gap-2"
                 variant="outline"
               >
                 <Mail className="h-4 w-4" />
-                {sendPaymentReminders.isPending ? "Sending..." : "Send Reminders"}
+                {sendManualPaymentReminder.isPending ? "Sending..." : "Send Reminders"}
               </Button>
             </div>
           )}
@@ -310,26 +333,24 @@ export default function Payments() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredPayments.map((payment) => (
               <PaymentCard
                 key={payment.id}
                 payment={payment}
-                responsibleName={getProfileName(payment.responsible_user_id)}
+                responsibleName={getResponsibleName(payment.responsible_user_id)}
                 projectName={getProjectName(payment.project_id)}
-                canEdit={isDirector || payment.responsible_user_id === profiles?.find(p => p.email)?.id}
+                responsibleUserId={payment.responsible_user_id}
+                canEdit={isDirector}
                 isSelected={selectedPayments.includes(payment.id)}
                 onSelect={handleSelectPayment}
-                onDelete={isDirector ? handleDeletePayment : undefined}
+                onDelete={handleDeletePayment}
               />
             ))}
           </div>
         )}
-      </div>
-
-      {isDirector && (
         <CreatePaymentModal open={createModalOpen} onOpenChange={setCreateModalOpen} />
-      )}
+      </div>
     </AppLayout>
   );
 }

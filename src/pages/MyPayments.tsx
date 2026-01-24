@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { format, isPast, addDays } from "date-fns";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,13 +43,15 @@ export default function MyPayments() {
     return projects?.find(p => p.id === projectId)?.name;
   };
 
-  const filteredPayments = payments?.filter(payment => {
-    const matchesSearch = 
-      payment.client_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      getProjectName(payment.project_id)?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || payment.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredPayments = useMemo(() => {
+    return payments?.filter(payment => {
+      const matchesSearch = 
+        payment.client_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        getProjectName(payment.project_id)?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === "all" || payment.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [payments, searchQuery, statusFilter, projects]);
 
   // Calculate statistics
   const today = new Date();

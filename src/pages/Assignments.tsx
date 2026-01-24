@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { Search, Plus, Grid3X3, List, ChevronLeft, ChevronRight, Archive, ArchiveRestore, Tag } from "lucide-react";
+import { Search, Plus, Grid3X3, List, ChevronLeft, ChevronRight, Archive, ArchiveRestore, Tag, Download } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,21 +13,24 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { AssignmentDebugTest } from "@/components/debug/AssignmentDebugTest";
 import { StatusBadge, PriorityBadge } from "@/components/ui/status-badge";
 import { CategoryBadge } from "@/components/ui/category-badge";
-import { useAssignments, useMyAssignments, type Assignment, type AssignmentFilters } from "@/hooks/useAssignments";
+import { useAssignments, useMyAssignments, type Assignment } from "@/hooks/useAssignments";
 import { type AssignmentWithRelations } from "@/types/assignment-relations";
 import { useSimpleAssignments, useSimpleMyAssignments } from "@/hooks/useSimpleAssignments";
 import { useAssignmentsWithProfiles, useMyAssignmentsWithProfiles } from "@/hooks/useAssignmentsWithProfiles";
 import { useAssignmentsWithCreator } from "@/hooks/useSimpleUsers";
 import { useActiveProjects } from "@/hooks/useProjects";
+import { useProfiles } from "@/hooks/useProfiles";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAuth } from "@/hooks/useAuth";
 import { useAutoArchive, useManualArchive } from "@/hooks/useAutoArchive";
 import { useDebouncedValue } from "@/hooks/useVirtualScroll";
-import { format } from "date-fns";
+import { format, startOfDay, endOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { TASK_CATEGORIES } from "@/lib/constants";
 import type { AssignmentPriority, AssignmentStatus } from "@/types";
+import type { AssignmentFilters } from "@/types/assignment";
+import * as XLSX from 'xlsx';
 
 const ITEMS_PER_PAGE = 12;
 
@@ -46,6 +49,7 @@ export default function Assignments() {
   const [selectedAssignment, setSelectedAssignment] = useState<AssignmentWithRelations | null>(null);
 
   const { data: projects } = useActiveProjects();
+  const { data: profiles } = useProfiles();
   
   // Debounce search for better performance
   const debouncedSearch = useDebouncedValue(search, 300);
@@ -130,6 +134,38 @@ export default function Assignments() {
   const handlePrevPage = useCallback(() => setCurrentPage(p => p - 1), []);
   const handleNextPage = useCallback(() => setCurrentPage(p => p + 1), []);
 
+  const handleExportToExcel = useCallback(() => {
+    // Filter tasks created today
+    const today = new Date();
+    const todayStart = startOfDay(today);
+    const todayEnd = endOfDay(today);
+
+    const todayTasks = assignments?.filter(a => {
+      if (!a.created_at) return false;
+      const createdDate = new Date(a.created_at);
+      return createdDate >= todayStart && createdDate <= todayEnd;
+    }) || [];
+
+    // Prepare data for Excel
+    const excelData = todayTasks.map((assignment) => ({
+      'Title': assignment.title,
+      'Description': assignment.description || '',
+      'Remark': assignment.remark || '',
+      'Assignee': assignment.assignee?.name || 'Unassigned',
+      'Status': assignment.status.replace('_', ' '),
+      'Due Date': assignment.due_date ? format(new Date(assignment.due_date), 'MMM d, yyyy') : 'No due date'
+    }));
+
+    // Create workbook and worksheet
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Tasks Created Today');
+
+    // Generate Excel file and download
+    const fileName = `tasks_created_${format(today, 'yyyy-MM-dd')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  }, [assignments]);
+
   return (
     <AppLayout title={isDirector ? "All Assignments" : "My Assignments"}>
       <div className="space-y-6 animate-fade-in">
@@ -143,6 +179,10 @@ export default function Assignments() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExportToExcel} className="gap-2">
+              <Download className="h-4 w-4" />
+              Export to Excel
+            </Button>
             <Button variant="outline" onClick={() => setShowCreateModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Self Assignment
@@ -186,15 +226,16 @@ export default function Assignments() {
                   </SelectContent>
                 </Select>
 
-                <Select value={filters.priority || "all"} onValueChange={(v) => handleFilterChange("priority", v)}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Priority" />
+                {/* Employee Filter */}
+                <Select value={filters.assigneeId || "all"} onValueChange={(v) => handleFilterChange("assigneeId", v)}>
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Employee" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Priority</SelectItem>
-                    <SelectItem value="normal">Normal</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="emergency">Emergency</SelectItem>
+                    <SelectItem value="all">All Employees</SelectItem>
+                    {profiles?.map((profile) => (
+                      <SelectItem key={profile.id} value={profile.id}>{profile.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
 
@@ -261,7 +302,7 @@ export default function Assignments() {
             Showing {paginatedAssignments.length} of {filteredAssignments.length} assignments
             {archiveFilter === "archived" && " (archived)"}
           </span>
-          {(filters.status || filters.priority || filters.projectId || filters.category || search || archiveFilter !== "active") && (
+          {(filters.status || filters.assigneeId || filters.projectId || filters.category || search || archiveFilter !== "active") && (
             <Button variant="ghost" size="sm" onClick={handleClearFilters}>
               Clear filters
             </Button>
@@ -290,7 +331,7 @@ export default function Assignments() {
                 {archiveFilter === "archived"
                   ? "Archived assignments will appear here"
                   : search || Object.keys(filters).length > 0
-                    ? "Try adjusting your search or filters"
+                    ? "Try adjusting your search, employee, or other filters"
                     : "Create your first assignment to get started"}
               </p>
               {archiveFilter !== "archived" && (
@@ -341,10 +382,8 @@ export default function Assignments() {
               <table className="w-full">
                 <thead className="bg-muted/50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Title</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Assignment</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Status</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Priority</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Category</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Due Date</th>
                     {isDirector && <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Assignee</th>}
                     {!isDirector && <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Creator</th>}
@@ -359,33 +398,35 @@ export default function Assignments() {
                       onClick={() => handleAssignmentClick(assignment)}
                     >
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{assignment.title}</span>
-                          {isTaskArchived(assignment.id) && (
-                            <Badge variant="secondary" className="text-xs">Archived</Badge>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm">{assignment.title}</span>
+                            {isTaskArchived(assignment.id) && (
+                              <Badge variant="secondary" className="text-xs">Archived</Badge>
+                            )}
+                          </div>
+                          {assignment.description && (
+                            <p className="text-sm text-muted-foreground line-clamp-2">{assignment.description}</p>
+                          )}
+                          {assignment.remark && (
+                            <p className="text-xs italic text-muted-foreground">{assignment.remark}</p>
                           )}
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <StatusBadge status={assignment.status as AssignmentStatus} />
                       </td>
-                      <td className="px-4 py-3">
-                        <PriorityBadge priority={assignment.priority as AssignmentPriority} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <CategoryBadge category={assignment.category} />
-                      </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">
                         {assignment.due_date ? format(new Date(assignment.due_date), "MMM d, yyyy") : "—"}
                       </td>
                       {isDirector && (
                         <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {assignment.assignee_id.slice(0, 8)}...
+                          {assignment.assignee?.name || "Unassigned"}
                         </td>
                       )}
                       {!isDirector && (
                         <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {assignment.creator_id.slice(0, 8)}...
+                          {assignment.creator?.name || "Unknown"}
                         </td>
                       )}
                       <td className="px-4 py-3">

@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from "react";
 import { format } from "date-fns";
-import { Calendar, FolderKanban, Clock, ChevronRight, Package, ClipboardCheck, Truck, CheckCircle } from "lucide-react";
+import { Calendar, FolderKanban, Clock, ChevronRight, Package, ClipboardCheck, Truck, CheckCircle, Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Progress } from "@/components/ui/progress";
@@ -8,7 +8,8 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { useAssignments } from "@/hooks/useAssignments";
 import { useAssignmentsWithProfiles } from "@/hooks/useAssignmentsWithProfiles";
-import { Project, PROJECT_STAGES, ProjectStage, useUpdateProjectStage } from "@/hooks/useProjects";
+import { Project, useUpdateProjectStage } from "@/hooks/useProjects";
+import { PROJECT_STAGES, type ProjectStage } from "@/constants/projectStages";
 import { useUserRole } from "@/hooks/useUserRole";
 
 interface ProjectDetailModalProps {
@@ -19,6 +20,8 @@ interface ProjectDetailModalProps {
 
 const STAGE_ICONS: Record<ProjectStage, React.ReactNode> = {
   order_received: <Package className="h-4 w-4" />,
+  shipment_plan: <Calendar className="h-4 w-4" />,
+  order_to_supplier: <Plus className="h-4 w-4" />,
   inspection: <ClipboardCheck className="h-4 w-4" />,
   dispatch: <Truck className="h-4 w-4" />,
   delivery: <CheckCircle className="h-4 w-4" />,

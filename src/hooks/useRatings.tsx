@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useToast } from "./use-toast";
+import { desktopNotify } from "@/utils/desktopNotify";
 
 export interface EmployeeRating {
   id: string;
@@ -118,6 +119,22 @@ export function useCreateRating() {
         console.error("Failed to create notification:", notifError);
       } else {
         console.log("✅ Notification created successfully:", notifData);
+        
+        // Create desktop notification for the rated employee
+        try {
+          await desktopNotify(
+            "Performance Rating Received",
+            `You received a ${input.score}/5 rating for ${input.period_type === "monthly" ? "month" : "year"} ${input.period_value}`,
+            "/ratings",
+            {
+              tag: `rating-${data.id}-${input.user_id}`,
+              urgency: "normal",
+              requireInteraction: false
+            }
+          );
+        } catch (error) {
+          console.error("Failed to send desktop notification for rating:", error);
+        }
       }
 
       return data;

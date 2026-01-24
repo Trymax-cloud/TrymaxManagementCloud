@@ -306,14 +306,15 @@ export default function Settings() {
                     <div className="space-y-0.5">
                       <p className="font-medium">Session Timeout</p>
                       <p className="text-sm text-muted-foreground">
-                        Automatically sign out after period of inactivity
+                        Use "Remember Me" on login to stay signed in. Session timeout is managed by login preferences.
                       </p>
                     </div>
                     <Select 
                       value={settings.system.sessionTimeout}
                       onValueChange={(value) => updateSystemSettings({ sessionTimeout: value })}
+                      disabled
                     >
-                      <SelectTrigger className="w-32">
+                      <SelectTrigger className="w-32 opacity-50">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
