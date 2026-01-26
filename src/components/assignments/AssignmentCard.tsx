@@ -65,6 +65,12 @@ export const AssignmentCard = memo(function AssignmentCard({
           <p className="text-sm text-muted-foreground line-clamp-2">{assignment.description}</p>
         )}
 
+        {assignment.remark && (
+          <div className="text-sm text-muted-foreground">
+            <span className="font-medium">Remark:</span> {assignment.remark}
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
           <div className={cn("flex items-center gap-1", isOverdue && "text-destructive")}>
             <Calendar className="h-3.5 w-3.5" />

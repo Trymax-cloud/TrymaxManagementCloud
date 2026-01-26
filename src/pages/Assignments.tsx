@@ -135,36 +135,31 @@ export default function Assignments() {
   const handleNextPage = useCallback(() => setCurrentPage(p => p + 1), []);
 
   const handleExportToExcel = useCallback(() => {
-    // Filter tasks created today
-    const today = new Date();
-    const todayStart = startOfDay(today);
-    const todayEnd = endOfDay(today);
-
-    const todayTasks = assignments?.filter(a => {
-      if (!a.created_at) return false;
-      const createdDate = new Date(a.created_at);
-      return createdDate >= todayStart && createdDate <= todayEnd;
+    // Filter all assignments and exclude archived assignments only
+    const activeAssignments = assignments?.filter(a => {
+      return !isTaskArchived(a.id); // Exclude archived assignments only
     }) || [];
 
     // Prepare data for Excel
-    const excelData = todayTasks.map((assignment) => ({
+    const excelData = activeAssignments.map((assignment) => ({
       'Title': assignment.title,
       'Description': assignment.description || '',
       'Remark': assignment.remark || '',
       'Assignee': assignment.assignee?.name || 'Unassigned',
       'Status': assignment.status.replace('_', ' '),
-      'Due Date': assignment.due_date ? format(new Date(assignment.due_date), 'MMM d, yyyy') : 'No due date'
+      'Due Date': assignment.due_date ? format(new Date(assignment.due_date), 'MMM d, yyyy') : 'No due date',
+      'Created Date': assignment.created_at ? format(new Date(assignment.created_at), 'MMM d, yyyy') : 'No created date'
     }));
 
     // Create workbook and worksheet
     const ws = XLSX.utils.json_to_sheet(excelData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Tasks Created Today');
+    XLSX.utils.book_append_sheet(wb, ws, 'All Active Assignments');
 
     // Generate Excel file and download
-    const fileName = `tasks_created_${format(today, 'yyyy-MM-dd')}.xlsx`;
+    const fileName = `all_active_assignments_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
     XLSX.writeFile(wb, fileName);
-  }, [assignments]);
+  }, [assignments, isTaskArchived]);
 
   return (
     <AppLayout title={isDirector ? "All Assignments" : "My Assignments"}>
@@ -383,6 +378,7 @@ export default function Assignments() {
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Assignment</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Remark</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Status</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Due Date</th>
                     {isDirector && <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Assignee</th>}
@@ -408,10 +404,10 @@ export default function Assignments() {
                           {assignment.description && (
                             <p className="text-sm text-muted-foreground line-clamp-2">{assignment.description}</p>
                           )}
-                          {assignment.remark && (
-                            <p className="text-xs italic text-muted-foreground">{assignment.remark}</p>
-                          )}
                         </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">
+                        {assignment.remark || ""}
                       </td>
                       <td className="px-4 py-3">
                         <StatusBadge status={assignment.status as AssignmentStatus} />

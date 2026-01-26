@@ -37,7 +37,23 @@ export function useMyRatings() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data as EmployeeRating[];
+      
+      // Get creator profiles separately
+      const creatorIds = [...new Set(data?.map(r => r.created_by).filter(Boolean) || [])];
+      const { data: creatorProfiles } = await supabase
+        .from("profiles")
+        .select("id, name, email")
+        .in("id", creatorIds);
+
+      const creatorMap = (creatorProfiles || []).reduce((acc, profile) => {
+        acc[profile.id] = profile;
+        return acc;
+      }, {} as Record<string, { id: string; name: string; email: string }>);
+
+      return (data || []).map(rating => ({
+        ...rating,
+        creator: creatorMap[rating.created_by]
+      }));
     },
     enabled: !!user,
   });
@@ -65,7 +81,23 @@ export function useAllRatings(periodType?: string, periodValue?: string) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as EmployeeRating[];
+      
+      // Get creator profiles separately
+      const creatorIds = [...new Set(data?.map(r => r.created_by).filter(Boolean) || [])];
+      const { data: creatorProfiles } = await supabase
+        .from("profiles")
+        .select("id, name, email")
+        .in("id", creatorIds);
+
+      const creatorMap = (creatorProfiles || []).reduce((acc, profile) => {
+        acc[profile.id] = profile;
+        return acc;
+      }, {} as Record<string, { id: string; name: string; email: string }>);
+
+      return (data || []).map(rating => ({
+        ...rating,
+        creator: creatorMap[rating.created_by]
+      }));
     },
     enabled: !!user,
   });
@@ -87,6 +119,17 @@ export function useCreateRating() {
   return useMutation({
     mutationFn: async (input: CreateRatingInput) => {
       if (!user) throw new Error("Not authenticated");
+
+      // Check if user is a director
+      const { data: userRole } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!userRole || userRole.role !== "director") {
+        throw new Error("Only directors can create ratings");
+      }
 
       const { data, error } = await supabase
         .from("employee_ratings")

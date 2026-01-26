@@ -25,7 +25,7 @@ const assignmentSchema = z.object({
   description: z.string().max(2000).optional(),
   project_id: z.string().optional(),
   priority: z.enum(["normal", "high", "emergency"]),
-  category: z.enum(["general", "inspection", "production", "delivery", "admin", "other"]),
+  category: z.enum(TASK_CATEGORIES.map(c => c.value) as [string, ...string[]]),
   remark: z.string().max(1000).optional(),
 });
 
@@ -145,6 +145,11 @@ export function CreateAssignmentModal({ open, onOpenChange, isSelfAssignment = f
           <div className="space-y-2">
             <Label>Description</Label>
             <Textarea placeholder="Describe the assignment..." rows={3} {...form.register("description")} />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Remark (Optional)</Label>
+            <Textarea placeholder="Add any additional remarks..." rows={2} {...form.register("remark")} />
           </div>
 
           {!isSelfAssignment && isDirector && (

@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAssignmentStats, useAssignments, useOverdueAssignments, type Assignment } from "@/hooks/useAssignments";
 import { useAssignmentsWithProfiles, useOverdueAssignmentsWithProfiles } from "@/hooks/useAssignmentsWithProfiles";
+import { useAutoArchive } from "@/hooks/useAutoArchive";
 import { type AssignmentWithRelations } from "@/types/assignment-relations";
 import { useProjects } from "@/hooks/useProjects";
 import { useProfiles } from "@/hooks/useProfiles";
@@ -25,6 +26,21 @@ export default function Dashboard() {
   const { data: overdueAssignments } = useOverdueAssignmentsWithProfiles();
   const { data: projects } = useProjects();
   const { data: profiles } = useProfiles();
+
+  // Filter out archived assignments for dashboard metrics
+  const { filterArchived } = useAutoArchive(allAssignments);
+  const activeAssignments = filterArchived(allAssignments || []);
+  const { filterArchived: filterOverdueArchived } = useAutoArchive(overdueAssignments);
+  const activeOverdueAssignments = filterOverdueArchived(overdueAssignments || []);
+
+  // Calculate filtered stats for employee view (excluding archived assignments)
+  const filteredStats = stats ? {
+    total: activeAssignments.filter(a => a.assignee_id === user?.id).length,
+    completed: activeAssignments.filter(a => a.assignee_id === user?.id && a.status === "completed").length,
+    inProgress: activeAssignments.filter(a => a.assignee_id === user?.id && a.status === "in_progress").length,
+    pending: activeAssignments.filter(a => a.assignee_id === user?.id && a.status === "not_started").length,
+    emergency: activeAssignments.filter(a => a.assignee_id === user?.id && a.priority === "emergency").length,
+  } : null;
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -53,7 +69,7 @@ export default function Dashboard() {
   const directorStats = {
     totalEmployees: profiles?.length || 0,
     activeProjects: projects?.filter(p => p.status === "active").length || 0,
-    overdueAssignments: overdueAssignments?.length || 0,
+    overdueAssignments: activeOverdueAssignments?.length || 0,
   };
 
   if (roleLoading) {
@@ -103,7 +119,7 @@ export default function Dashboard() {
               />
               <StatsCard
                 title="Total Assignments"
-                value={allAssignments?.length || 0}
+                value={activeAssignments?.length || 0}
                 icon={ClipboardList}
               />
               <StatsCard
@@ -118,27 +134,27 @@ export default function Dashboard() {
             <>
               <StatsCard
                 title="Total Assignments"
-                value={stats?.total || 0}
+                value={filteredStats?.total || 0}
                 icon={ClipboardList}
-                trend={stats?.total ? { value: "+3", isPositive: true } : undefined}
+                trend={filteredStats?.total ? { value: "+3", isPositive: true } : undefined}
                 subtitle="this week"
               />
               <StatsCard
                 title="Completed"
-                value={stats?.completed || 0}
+                value={filteredStats?.completed || 0}
                 icon={CheckCircle2}
                 variant="success"
-                subtitle={stats?.total ? `${Math.round((stats.completed / stats.total) * 100)}% completion` : ""}
+                subtitle={filteredStats?.total ? `${Math.round((filteredStats.completed / filteredStats.total) * 100)}% completion` : ""}
               />
               <StatsCard
                 title="In Progress"
-                value={stats?.inProgress || 0}
+                value={filteredStats?.inProgress || 0}
                 icon={Clock}
                 variant="info"
               />
               <StatsCard
                 title="Emergency"
-                value={stats?.emergency || 0}
+                value={filteredStats?.emergency || 0}
                 icon={AlertTriangle}
                 variant="danger"
                 subtitle="urgent tasks"

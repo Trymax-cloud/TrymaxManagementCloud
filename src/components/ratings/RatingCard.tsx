@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { EmployeeRating } from "@/hooks/useRatings";
 
 interface RatingCardProps {
-  rating: EmployeeRating;
+  rating: EmployeeRating & { creator?: { id: string; name: string; email: string } };
   employeeName?: string;
   showEmployee?: boolean;
 }
@@ -81,6 +81,11 @@ export const RatingCard = memo(function RatingCard({
         <p className="text-xs text-muted-foreground mt-3">
           Submitted on {formattedDate}
         </p>
+        {rating.creator && (
+          <p className="text-xs text-muted-foreground mt-1">
+            Rating given by {rating.creator.name || "Director"}
+          </p>
+        )}
       </CardContent>
     </Card>
   );

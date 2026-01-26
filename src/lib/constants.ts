@@ -4,6 +4,8 @@ export const TASK_CATEGORIES = [
   { value: "inspection", label: "Inspection", color: "bg-blue-500" },
   { value: "production", label: "Production", color: "bg-green-500" },
   { value: "delivery", label: "Delivery", color: "bg-amber-500" },
+  { value: "operation", label: "Operation", color: "bg-purple-500" },
+  { value: "proposal", label: "Proposal", color: "bg-pink-500" },
 ] as const;
 
 export type TaskCategory = typeof TASK_CATEGORIES[number]["value"];
